@@ -40,12 +40,12 @@ export class Controls {
         get: () => globe.perPpm, set: (v) => { globe.perPpm = v; reframe(); }},
       {label: 'Texture limit (ppm)', min: 0, max: 25, step: 0.5, decimals: 1,
         get: () => globe.texLimit, set: (v) => { globe.texLimit = v; reframe(); }},
-      {label: 'Base radius', min: 120, max: 360, step: 5, decimals: 0,
+      {label: 'Base radius', min: 150, max: 700, step: 10, decimals: 0,
         get: () => globe.radiusBase, set: (v) => { globe.radiusBase = v; reframe(); }},
       {label: 'Lighting', min: 0, max: 1, step: 0.05, decimals: 2,
         get: () => globe.lightMix, set: (v) => (globe.lightMix = v)},
       {label: 'Grain target (ppm)', min: 0, max: 3, step: 0.05, decimals: 2,
-        get: () => globe.grainTarget, set: (v) => (globe.grainTarget = v)},
+        get: () => globe.grainTarget, set: (v) => { globe.grainTarget = v; reframe(); }},
       {label: 'Palette (classic → extended)', min: 0, max: 1, step: 0.05, decimals: 2,
         get: () => globe.paletteMix,
         set: (v) => {
@@ -127,6 +127,10 @@ export class Controls {
       body.appendChild(row);
     }
 
+    // The panel is an authoring tool, not part of the piece: it stays hidden
+    // until asked for with 'h'.
+    this.root.classList.add('hidden');
+
     const reset = document.createElement('button');
     reset.className = 'controls-reset';
     reset.textContent = 'Reset';
@@ -148,6 +152,7 @@ export class Controls {
   }
 
   toggleVisible(): void {
-    this.root.classList.toggle('hidden');
+    const hidden = this.root.classList.toggle('hidden');
+    document.body.classList.toggle('controls-open', !hidden);
   }
 }

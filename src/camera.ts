@@ -75,13 +75,27 @@ export class Camera {
     this.distDest = Math.min(this.maxDist, Math.max(this.minDist, this.distDest + delta));
   }
 
+  /** Multiply the target distance (pinch-to-zoom). */
+  scaleDist(factor: number): void {
+    this.distDest = Math.min(this.maxDist, Math.max(this.minDist, this.distDest * factor));
+  }
+
+  /** Incremental orbit, for drag on touch where there is no hover position. */
+  nudge(deltaAngle: number, deltaTilt: number): void {
+    this.angleDest += deltaAngle;
+    const max = (this.maxTiltDegrees * Math.PI) / 180;
+    this.tiltDest = Math.max(-max, Math.min(max, this.tiltDest + deltaTilt));
+  }
+
   /**
    * Frame the globe: distance is derived from its largest possible radius so
    * the framing holds no matter how long the record is (the globe grows with
    * the CO2 trend). Keeps the original's 0.8 dolly-in ratio.
    */
   frameRadius(maxRadius: number, snap = true): void {
-    this.distDest = maxRadius * 2.6;
+    // 2.3x leaves the biggest month filling ~75% of the short axis. The globe
+    // grows with the CO2 trend, so early months sit well inside this.
+    this.distDest = maxRadius * 2.3;
     this.minDist = maxRadius * 1.05;
     this.maxDist = maxRadius * 12;
     // snap=false leaves the current distance alone, so the normal easing

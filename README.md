@@ -40,15 +40,31 @@ To regenerate or swap datasets see [tools/README.md](tools/README.md). Without
 URL params: `?synthetic` forces synthetic data, `?start=<n>` starts playback
 at month index *n*.
 
-## Controls (same as the original app)
+## Controls
 
-- **pointer** — vertical position tilts the camera, horizontal motion nudges the orbit
+Mouse keeps the original's passive feel — the camera follows the pointer with
+no dragging:
+
+- **pointer** — vertical position tilts the camera (to 80°), horizontal motion nudges the orbit
 - **wheel / ↑ ↓** — zoom
 - **click** — advance one month
 - **p** — pause/resume playback (camera keeps orbiting)
 - **f** — fullscreen (Esc exits)
-- **h** — show/hide the parameter panel
+- **h** — show/hide the parameter panel (hidden by default)
 - **l** — toggle faceted lighting
+
+Touch has no hover, so it gets the conventional mapping: **drag** to orbit,
+**pinch** to zoom, **tap** to advance a month. The parameter panel is
+keyboard-only (`h`), so it is not reachable on a phone — it is an authoring
+tool, not part of the piece.
+
+## Layout
+
+Type and spacing scale with the viewport (`clamp`/`vmin`) and the HUD anchors
+to the viewport edges, honouring notch insets, so the piece holds up from a
+375 px phone to a large display. The summary sits top-left, the date/ppm/source
+readout top-right, the colorbar bottom-centre; on narrow screens the summary
+drops below the readout rather than colliding with it.
 
 ## Parameter panel
 

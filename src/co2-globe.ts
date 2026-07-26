@@ -28,8 +28,16 @@ export class CO2Globe {
    * interpolation, not shading. 'l' toggles the faceted relief view.
    */
   lightMix = 0;
-  /** Original CO2Mesh: radius = 200 + 5*(co2 - 375), i.e. 5 units per ppm. */
-  radiusBase = 250;
+  /**
+   * Original CO2Mesh: radius = 200 + 5*(co2 - 375), i.e. 5 units per ppm.
+   *
+   * The base is larger than the original's 200 because this record is longer:
+   * its mean spans ~50 ppm, so at 5 units/ppm the trend alone swings the
+   * radius by +-125. On a base of 200 the globe would grow threefold and the
+   * early years would shrink to a third of the frame; 360 keeps the growth
+   * near the original's ~2x, which is what the framing was tuned around.
+   */
+  radiusBase = 360;
   perPpm = 5;
   /** ppm value at which the globe equals radiusBase (record midpoint). */
   refMid: number;
@@ -140,7 +148,11 @@ export class CO2Globe {
 
   get maxRadius(): number {
     const maxMean = Math.max(...this.dataset.months.map((m) => m.mean));
-    return this.radiusBase + this.perPpm * (maxMean - this.refMid) + this.perPpm * this.texLimit;
+    return (
+      this.radiusBase +
+      this.perPpm * (maxMean - this.refMid) +
+      this.perPpm * (this.texLimit + this.grainTarget)
+    );
   }
 
   render(

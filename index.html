@@ -2,20 +2,36 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no"
+    />
+    <meta name="theme-color" content="#000000" />
     <title>AIRS CO2</title>
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
     <canvas id="canvas"></canvas>
+
     <div id="hud">
-      <div id="date"></div>
-      <div id="ppm"></div>
-      <div id="source"></div>
-      <canvas id="colorbar" width="400" height="14"></canvas>
-      <div id="colorbar-labels"><span id="vmin-label"></span><span id="vmax-label"></span></div>
+      <div id="info"></div>
+
+      <div id="readout">
+        <div id="date"></div>
+        <div id="ppm"></div>
+        <div id="source"></div>
+      </div>
+
+      <div id="legend">
+        <canvas id="colorbar" width="400" height="14"></canvas>
+        <div id="colorbar-labels">
+          <span id="vmin-label"></span><span id="vmax-label"></span>
+        </div>
+      </div>
     </div>
+
     <div id="controls"></div>
+
     <div id="loading">loading co2 data&hellip;</div>
     <script type="module" src="/src/main.ts"></script>
   </body>

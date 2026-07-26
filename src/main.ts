@@ -7,6 +7,7 @@ import {Playback} from './playback';
 import {CO2Globe} from './co2-globe';
 import {Hud} from './hud';
 import {Controls} from './controls';
+import {bindInput} from './input';
 
 async function main(): Promise<void> {
   const canvas = document.getElementById('canvas') as HTMLCanvasElement;
@@ -28,53 +29,7 @@ async function main(): Promise<void> {
   const controls = new Controls(globe, playback, hud, dataset, camera);
   camera.frameRadius(globe.maxRadius);
 
-  // --- Input (mappings from the original EarthquakeApp.cpp) ---
-  const overControls = (e: Event) => (e.target as HTMLElement)?.closest('#controls') !== null;
-  let lastPointerX: number | null = null;
-  window.addEventListener('pointermove', (e) => {
-    const dx = lastPointerX === null ? 0 : e.clientX - lastPointerX;
-    lastPointerX = e.clientX;
-    if (overControls(e)) return; // don't orbit while dragging sliders
-    camera.onPointerMove(e.clientY, dx, window.innerHeight);
-  });
-  window.addEventListener(
-    'wheel',
-    (e) => {
-      e.preventDefault();
-      const notches = e.deltaMode === WheelEvent.DOM_DELTA_LINE ? e.deltaY / 3 : e.deltaY / 100;
-      camera.adjustDist(notches * 20);
-    },
-    {passive: false}
-  );
-  window.addEventListener('keydown', (e) => {
-    switch (e.key) {
-      case 'p':
-        playback.togglePlay();
-        break;
-      case 'f':
-        if (document.fullscreenElement) {
-          document.exitFullscreen();
-        } else {
-          document.documentElement.requestFullscreen();
-        }
-        break;
-      case 'l':
-        globe.lightMix = globe.lightMix > 0 ? 0 : 1;
-        controls.refresh();
-        break;
-      case 'h':
-        controls.toggleVisible();
-        break;
-      case 'ArrowUp':
-        camera.adjustDist(-10);
-        break;
-      case 'ArrowDown':
-        camera.adjustDist(10);
-        break;
-    }
-  });
-  // Original mouseDown advanced the animation one month
-  canvas.addEventListener('pointerdown', () => playback.step());
+  bindInput({canvas, camera, playback, globe, controls});
 
   let lastTime: number | null = null;
 

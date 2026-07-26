@@ -1,3 +1,19 @@
+/* Layout scales from phones to large displays: type and spacing come from
+   clamp()/vmin so the piece keeps its proportions, and the HUD anchors to the
+   viewport edges (honouring notch insets) rather than to a fixed pixel offset
+   from the centre, which used to push text off narrow screens. */
+
+:root {
+  --edge: max(14px, env(safe-area-inset-left));
+  --edge-top: max(14px, env(safe-area-inset-top));
+  --edge-bottom: max(14px, env(safe-area-inset-bottom));
+  --readout: clamp(22px, 4.4vmin, 44px);
+  --caption: clamp(11px, 1.5vmin, 15px);
+  --panel-text: clamp(11px, 1.4vmin, 14px);
+  --ink: #f2f2f2;
+  --ink-dim: #9a9a9a;
+}
+
 html,
 body {
   margin: 0;
@@ -7,6 +23,7 @@ body {
   overflow: hidden;
   background: #000;
   font-family: 'Source Sans Pro', 'Source Sans 3', -apple-system, 'Helvetica Neue', sans-serif;
+  -webkit-text-size-adjust: 100%;
 }
 
 #canvas {
@@ -16,90 +33,140 @@ body {
   height: 100%;
   display: block;
   cursor: none;
+  /* Stop the browser claiming drags/pinches for scroll and zoom */
+  touch-action: none;
 }
 
 #hud {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  color: #fff;
+  color: var(--ink);
   text-shadow: 0 0 8px rgba(0, 0, 0, 0.8);
 }
 
-#date {
+/* --- Date / ppm / provenance ------------------------------------------- */
+
+#readout {
   position: absolute;
-  top: 84px;
-  left: calc(50% + 200px);
-  font-size: 32px;
-  font-weight: 300;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
+  top: var(--edge-top);
+  right: var(--edge);
+  text-align: right;
+  line-height: 1.15;
 }
 
 #date,
-#ppm,
-#source {
+#ppm {
+  font-size: var(--readout);
+  font-weight: 300;
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
-/* Data provenance for the month on screen; changes as the animation crosses
-   from one product to the next. */
 #source {
-  position: absolute;
-  top: 166px;
-  left: calc(50% + 200px);
-  font-size: 14px;
+  margin-top: 0.35em;
+  font-size: var(--caption);
   font-weight: 300;
   letter-spacing: 0.02em;
-  color: #9a9a9a;
+  color: var(--ink-dim);
+  white-space: nowrap;
 }
 
-#ppm {
+/* --- Standing summary of the record ------------------------------------- */
+
+#info {
   position: absolute;
-  top: 124px;
-  left: calc(50% + 200px);
-  font-size: 32px;
+  left: var(--edge);
+  top: var(--edge-top);
+  /* A reading measure rather than a share of the viewport: on wide screens a
+     percentage would run under the date/ppm readout in the opposite corner. */
+  max-width: min(52ch, calc(100vw - 2 * var(--edge)));
+  font-size: var(--caption);
   font-weight: 300;
+  line-height: 1.55;
+  color: var(--ink-dim);
+}
+
+.info-head {
+  color: var(--ink);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+.info-figure {
+  color: var(--ink);
+  font-size: 1.6em;
   font-variant-numeric: tabular-nums;
+  line-height: 1.3;
+}
+
+.info-figure span {
+  font-size: 0.55em;
+  color: var(--ink-dim);
+  letter-spacing: 0.02em;
+}
+
+.info-note {
+  margin-top: 0.6em;
+  opacity: 0.75;
+  text-wrap: pretty;
+}
+
+/* The parameter panel opens over the same corner, so the summary steps aside
+   rather than sitting underneath it. */
+body.controls-open #info {
+  display: none;
+}
+
+/* --- Colorbar ----------------------------------------------------------- */
+
+#legend {
+  position: absolute;
+  bottom: var(--edge-bottom);
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(400px, calc(100vw - 2 * var(--edge)));
 }
 
 #colorbar {
-  position: absolute;
-  bottom: 81px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 400px;
-  height: 14px;
+  display: block;
+  width: 100%;
+  height: clamp(8px, 1.4vmin, 14px);
+  border-radius: 2px;
 }
 
 #colorbar-labels {
-  position: absolute;
-  bottom: 58px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 400px;
   display: flex;
   justify-content: space-between;
-  font-size: 14px;
+  margin-top: 6px;
+  font-size: var(--caption);
   font-weight: 300;
   opacity: 0.7;
 }
 
+/* --- Parameter panel ---------------------------------------------------- */
+
 #controls {
   position: absolute;
-  top: 16px;
-  left: 16px;
-  width: 240px;
+  top: var(--edge-top);
+  left: var(--edge);
+  width: min(250px, calc(100vw - 2 * var(--edge)));
+  max-height: calc(100dvh - var(--edge-top) - var(--edge-bottom) - 12px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   background: rgba(0, 0, 0, 0.55);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
   padding: 10px 12px;
   color: #d8d8d8;
-  font-size: 12px;
+  font-size: var(--panel-text);
   font-weight: 300;
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
   user-select: none;
+  -webkit-user-select: none;
+  z-index: 2;
 }
 
 #controls.hidden {
@@ -110,7 +177,7 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 13px;
+  font-size: 1.05em;
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: #fff;
@@ -128,8 +195,8 @@ body {
 }
 
 .controls-toggle {
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   line-height: 1;
   font-size: 15px;
 }
@@ -140,12 +207,13 @@ body {
 
 .controls-row {
   display: block;
-  margin: 10px 0;
+  margin: 9px 0;
 }
 
 .controls-label {
   display: flex;
   justify-content: space-between;
+  gap: 8px;
   margin-bottom: 3px;
 }
 
@@ -158,16 +226,19 @@ body {
   width: 100%;
   accent-color: #9ad;
   cursor: pointer;
+  /* Comfortable touch target without making the panel taller */
+  height: 20px;
+  margin: 0;
 }
 
 .controls-reset {
   margin-top: 6px;
-  padding: 4px 10px;
+  padding: 5px 12px;
 }
 
 .controls-hint {
   margin-top: 10px;
-  font-size: 10px;
+  font-size: 0.85em;
   line-height: 1.5;
   color: #888;
 }
@@ -179,11 +250,52 @@ body {
   align-items: center;
   justify-content: center;
   color: #666;
-  font-size: 16px;
+  font-size: var(--caption);
   font-weight: 300;
   letter-spacing: 0.08em;
 }
 
 body.ready #loading {
   display: none;
+}
+
+/* Touch devices: no hover, so the cursor is irrelevant and the keyboard
+   hints do not apply. */
+@media (hover: none) {
+  #canvas {
+    cursor: default;
+  }
+
+  .controls-hint {
+    display: none;
+  }
+}
+
+/* Phones: keep the globe unobstructed - the panel is opened deliberately via
+   the toggle, and sits over a dimmed backdrop rather than beside the art. */
+@media (max-width: 620px) {
+  #controls {
+    width: calc(100vw - 2 * var(--edge));
+    max-height: 62dvh;
+  }
+
+  #source {
+    max-width: 55vw;
+    white-space: normal;
+  }
+
+  /* Plenty of vertical room on a phone, so the summary gets the full width
+     rather than a narrow column beside the globe - which means it has to clear
+     the date/ppm readout above it instead of sharing that band. */
+  #info {
+    top: calc(var(--edge-top) + 96px);
+    max-width: calc(100vw - 2 * var(--edge));
+  }
+}
+
+/* Short viewports (landscape phones) have no room for the summary. */
+@media (max-height: 520px) {
+  #info {
+    display: none;
+  }
 }

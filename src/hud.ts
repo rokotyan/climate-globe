@@ -1,6 +1,39 @@
-import type {CO2Dataset} from './data';
+import type {CO2Dataset, MonthInfo} from './data';
 import type {PlaybackFrame} from './playback';
 import {normToCss, normalizePpm} from './color';
+
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+function monthName(m: MonthInfo): string {
+  return `${MONTH_NAMES[m.month - 1]} ${m.year}`;
+}
+
+/**
+ * If the record hands over to a product with markedly less per-cell texture,
+ * say so and when - otherwise the surface simply appears to go smooth for no
+ * visible reason. Returns null when the texture holds up throughout.
+ */
+function granularityNote(dataset: CO2Dataset): string | null {
+  const months = dataset.months;
+  const sources = [...new Set(months.map((m) => m.source).filter(Boolean))];
+  if (sources.length < 2) return null;
+
+  const lastSource = sources[sources.length - 1];
+  const start = months.findIndex((m) => m.source === lastSource);
+  if (start <= 0) return null;
+
+  const mean = (list: MonthInfo[]) =>
+    list.reduce((sum, m) => sum + (m.fur ?? 0), 0) / Math.max(1, list.length);
+  const before = mean(months.slice(0, start));
+  const after = mean(months.slice(start));
+  if (!(after < before * 0.8)) return null;
+
+  return (
+    `Smoother from ${monthName(months[start])}: the record moves to ${lastSource}, ` +
+    `whose quality screening strips the per-cell retrieval noise that textures the ` +
+    `earlier years (${after.toFixed(1)} vs ${before.toFixed(1)} ppm cell-to-cell).`
+  );
+}
 
 /**
  * HTML overlay HUD: colorbar (drawn from the shared ramp), "YYYY MM" date,
@@ -23,6 +56,38 @@ export class Hud {
     this.colorMax = dataset.colorMax;
     this.drawColorbar();
     this.setRange(dataset.colorMin, dataset.colorMax);
+    this.renderInfo(dataset);
+  }
+
+  /**
+   * Standing summary of what the record shows: where CO2 is now, how far it
+   * has climbed since the piece begins, and - if the record changes product
+   * partway - why the surface loses its fine texture when it does. Derived
+   * from the data so it stays true whenever the dataset is regenerated.
+   */
+  private renderInfo(dataset: CO2Dataset): void {
+    const el = document.getElementById('info');
+    if (!el) return;
+
+    const months = dataset.months;
+    const first = months[0];
+    const last = months[months.length - 1];
+    const delta = last.mean - first.mean;
+    const years = (last.year * 12 + last.month - (first.year * 12 + first.month)) / 12;
+    const percent = (delta / first.mean) * 100;
+    const perYear = (Math.pow(last.mean / first.mean, 1 / years) - 1) * 100;
+
+    const lines = [
+      `<div class="info-head">AIRS CO₂ · ${first.year}–${last.year}</div>`,
+      `<div class="info-figure">${last.mean.toFixed(1)} ppm <span>latest, ${monthName(last)}</span></div>`,
+      `<div>+${delta.toFixed(1)} ppm since ${monthName(first)} · +${percent.toFixed(1)}%` +
+        ` · ${perYear.toFixed(2)}%/yr (${(delta / years).toFixed(1)} ppm/yr)</div>`
+    ];
+
+    const note = granularityNote(dataset);
+    if (note) lines.push(`<div class="info-note">${note}</div>`);
+
+    el.innerHTML = lines.join('');
   }
 
   /** Keep the colorbar and readout tint on the same ramp as the globe. */
