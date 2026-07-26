@@ -4,6 +4,14 @@ import {normToCss, normalizePpm} from './color';
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
+/**
+ * Present-day global CO2, quoted for the headline figure.
+ *
+ * The satellite record runs several months behind, so its last month is not
+ * "now" - this is an external reference value and has to be updated by hand.
+ */
+const CURRENT_READING = {ppm: 429.0, label: 'Jul 2026'};
+
 function monthName(m: MonthInfo): string {
   return `${MONTH_NAMES[m.month - 1]} ${m.year}`;
 }
@@ -85,29 +93,32 @@ export class Hud {
     const months = dataset.months;
     const first = months[0];
     const last = months[months.length - 1];
-    const delta = last.mean - first.mean;
-    const years = (last.year * 12 + last.month - (first.year * 12 + first.month)) / 12;
+    const delta = CURRENT_READING.ppm - first.mean;
     const percent = (delta / first.mean) * 100;
-    const perYear = (Math.pow(last.mean / first.mean, 1 / years) - 1) * 100;
 
     const lines = [
       `<div class="info-head">AIRS CO₂ · ${first.year}–${last.year}</div>`,
-      `<div class="info-figure">${last.mean.toFixed(1)} ppm <span>latest, ${monthName(last)}</span></div>`,
-      `<div>+${delta.toFixed(1)} ppm since ${monthName(first)} · +${percent.toFixed(1)}%` +
-        ` · ${perYear.toFixed(2)}%/yr (${(delta / years).toFixed(1)} ppm/yr)</div>`
+      `<div class="info-figure">${CURRENT_READING.ppm.toFixed(1)} ppm ` +
+        `<span>latest, ${CURRENT_READING.label}</span></div>`,
+      `<div>+${delta.toFixed(0)} ppm since ${monthName(first)} · +${percent.toFixed(0)}%</div>`
     ];
 
+    // Provenance is a separate block: on phones it relocates to a centred
+    // footer while the headline figures stay in the top corner.
+    const provenance: string[] = [];
     const spans = sourceSpans(dataset);
     if (spans.length > 1) {
-      lines.push(
+      provenance.push(
         `<div class="info-sources">${spans
           .map((s) => `${s.label} <span>${s.from}–${String(s.to).slice(2)}</span>`)
           .join(' · ')}</div>`
       );
     }
-
     const note = granularityNote(dataset);
-    if (note) lines.push(`<div class="info-note">${note}</div>`);
+    if (note) provenance.push(`<div class="info-note">${note}</div>`);
+    if (provenance.length) {
+      lines.push(`<div id="provenance">${provenance.join('')}</div>`);
+    }
 
     el.innerHTML = lines.join('');
   }

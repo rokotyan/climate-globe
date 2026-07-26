@@ -302,8 +302,21 @@ body.ready #loading {
   }
 
   #source {
-    max-width: 40vw;
+    max-width: 55vw;
     white-space: normal;
+  }
+
+  /* The headline figures stay in the top corner, but the product list and the
+     texture note are long prose - on a phone they read better as a centred
+     footer above the legend than as a narrow column beside the readout. Fixed
+     rather than absolute so they anchor to the viewport instead of to the top
+     row they belong to on wider screens. */
+  #provenance {
+    position: fixed;
+    left: var(--edge);
+    right: var(--edge);
+    bottom: calc(var(--edge-bottom) + 54px);
+    text-align: center;
   }
 }
 
