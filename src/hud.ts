@@ -108,9 +108,16 @@ export class Hud {
     const provenance: string[] = [];
     const spans = sourceSpans(dataset);
     if (spans.length > 1) {
+      // Each product and its years are one unwrappable unit: a plain space
+      // (and the en dash, and the hyphen in "IR-only") are all break
+      // opportunities, so the years could otherwise end up on their own line.
       provenance.push(
         `<div class="info-sources">${spans
-          .map((s) => `${s.label} <span>${s.from}–${String(s.to).slice(2)}</span>`)
+          .map(
+            (s) =>
+              `<span class="src">${s.label}&nbsp;` +
+              `<span class="src-years">${s.from}–${String(s.to).slice(2)}</span></span>`
+          )
           .join(' · ')}</div>`
       );
     }

@@ -124,7 +124,13 @@ body {
   text-wrap: pretty;
 }
 
-.info-sources span {
+/* Keeps a product together with its years; the " · " separators between
+   products stay breakable, so the list still wraps between entries. */
+.info-sources .src {
+  white-space: nowrap;
+}
+
+.info-sources .src-years {
   font-variant-numeric: tabular-nums;
   opacity: 0.7;
 }
