@@ -7,7 +7,7 @@ in proportion to the CO₂ measured above it and coloured green through red, so 
 month reads at once as a shape and as a temperature. Play it and the planet
 grows: **+57 ppm since 2002, +15%**.
 
-![The globe in November 2025 — deep red, at its largest](docs/hero.png)
+![The globe in April 2015 — 400 ppm, its surface furred with per-cell retrieval noise](docs/cover.png)
 
 **[▶ Open the live version](https://rokotyan.github.io/airs-co2/)**
 
@@ -56,8 +56,8 @@ Touch has no hover, so it gets the conventional mapping: **drag** to orbit,
 **pinch** to zoom, **tap** to advance a month.
 
 `h` opens an authoring panel for displacement, texture limit, base radius,
-lighting, grain, the colour ramp, tilt range and playback speed. It is a tool
-for tuning the look, not part of the piece, so it starts hidden.
+lighting, the colour ramp, tilt range and playback speed. It is a tool for
+tuning the look, not part of the piece, so it starts hidden.
 
 ## The data
 
@@ -86,16 +86,12 @@ to one with no interpolation at all.
 
 ### Why the texture fades
 
-The fine fur on the early globes is **per-cell retrieval noise** — each cell
-was an independent, slightly noisy measurement, and that jitter is the texture.
+The fine fur on the cover image is **per-cell retrieval noise** — each cell was
+an independent, slightly noisy measurement, and that jitter is the texture.
 Modern processing deliberately removes it: cell-to-cell variation falls from
-1.19 ppm (AIRX3C2M) to 0.39 ppm (CLIMCAPS). Better data, less texture.
-
-Nothing recovers it, because there is nothing to recover — so the panel offers
-a **Grain** control instead, which tops each month up to a common texture level
-using only what it lacks. It defaults to off, and whenever it is active the
-header appends "+ grain", so synthetic texture is never presented as
-measurement.
+1.19 ppm (AIRX3C2M) through 1.65 (AIRS3C2M) to 0.39 ppm (CLIMCAPS). Better
+data, less texture. Nothing recovers it, because there is nothing left to
+recover — so the later years are shown exactly as measured, smooth.
 
 ## Running it
 

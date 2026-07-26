@@ -25,11 +25,6 @@ uniform float uMonthsPerAtlasRow;
 uniform float uMonthMean;
 uniform float uRefMid;
 uniform float uTexLimit;
-// Per-cell grain (ppm) added to each month, to top the smoother modern
-// products up to the texture level of the older AIRS retrievals. 0 = the
-// data exactly as measured.
-uniform float uGrainA;
-uniform float uGrainB;
 // 0 = classic green->red ramp, 1 = extended green->violet ramp
 uniform float uPaletteMix;
 
@@ -87,22 +82,9 @@ float fetchPpm(int m, ivec2 rowCol) {
   return texelFetch(co2Texture, origin + ivec2(rowCol.y, rowCol.x), 0).r;
 }
 
-/* Deterministic per (cell, month) value in [-1,1]. Stable for a given month so
-   the grain does not shimmer between frames, and lerped between months just
-   like the data, so it evolves without popping. */
-float grainAt(int m, ivec2 rowCol) {
-  vec3 p = vec3(float(rowCol.x), float(rowCol.y), float(m));
-  float h = fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453);
-  return h * 2.0 - 1.0;
-}
-
 void main() {
   ivec2 rowCol = ivec2(gridIndex);
-  int mA = int(uMonthA);
-  int mB = int(uMonthB);
-  float ppmA = fetchPpm(mA, rowCol) + grainAt(mA, rowCol) * uGrainA;
-  float ppmB = fetchPpm(mB, rowCol) + grainAt(mB, rowCol) * uGrainB;
-  float ppm = mix(ppmA, ppmB, uT);
+  float ppm = mix(fetchPpm(int(uMonthA), rowCol), fetchPpm(int(uMonthB), rowCol), uT);
   float norm = clamp((ppm - uVmin) / (uVmax - uVmin), 0.0, 1.0);
 
   vColor = rampColor(norm);

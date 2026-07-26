@@ -94,8 +94,8 @@ Note the DAP2 form (`.nc4?var`) silently returns all zeros here — use the DAP4
 CLIMCAPS is 1°×1°, sampled onto the app grid by nearest neighbour rather than
 averaged (averaging finer cells would smooth away the retrieval noise). Being
 a modern quality-screened product it is nonetheless much smoother than the old
-retrievals — ~0.39 ppm cell-to-cell vs 1.19 for AIRX3C2M — which is what the
-app's Grain slider exists to compensate for.
+retrievals — ~0.39 ppm cell-to-cell vs 1.19 for AIRX3C2M — so the surface
+visibly loses its fine texture once the record reaches 2017.
 
 ## Alternative: NOAA CarbonTracker (no account needed)
 

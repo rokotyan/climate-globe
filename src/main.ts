@@ -48,7 +48,6 @@ async function main(): Promise<void> {
       globe.render(renderPass, camera.getViewProjection(aspect), frame.monthA, frame.monthB, frame.t);
       renderPass.end();
 
-      hud.grainNote = globe.grainActive(frame.monthA) ? ' + grain' : '';
       hud.update(frame);
     }
   });

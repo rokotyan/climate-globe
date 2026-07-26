@@ -144,20 +144,13 @@ export class Hud {
     this.vmaxLabel.textContent = `${Math.round(max)} ppm`;
   }
 
-  /**
-   * Suffix appended to the provenance line while grain is topping a month up,
-   * so synthetic texture is never presented as measured data.
-   */
-  grainNote = '';
-
   update(frame: PlaybackFrame): void {
     this.dateEl.textContent = `${frame.year} ${String(frame.month).padStart(2, '0')}`;
     const norm = normalizePpm(frame.meanPpm, this.colorMin, this.colorMax);
     this.ppmEl.textContent = `${frame.meanPpm.toFixed(1)} ppm`;
     this.ppmEl.style.color = normToCss(norm, this.paletteMix);
-    const source = frame.source + this.grainNote;
-    if (this.sourceEl.textContent !== source) {
-      this.sourceEl.textContent = source;
+    if (this.sourceEl.textContent !== frame.source) {
+      this.sourceEl.textContent = frame.source;
     }
   }
 

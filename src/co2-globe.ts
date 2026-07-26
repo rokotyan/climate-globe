@@ -50,14 +50,6 @@ export class CO2Globe {
   /** ppm mapped to the green (low) and red (high) ends of the color ramp. */
   colorMin: number;
   colorMax: number;
-  /**
-   * Target cell-to-cell texture in ppm. Each month is topped up by only what
-   * it lacks (see `grainFor`), so the older AIRS retrievals - which already
-   * carry 1-2 ppm of real retrieval noise - are left untouched while the
-   * smoother modern products are brought to the same visual texture.
-   * 0 disables it and shows every month exactly as measured.
-   */
-  grainTarget = 0;
   /** 0 = classic green->red ramp, 1 = extended green->violet ramp. */
   paletteMix = 1;
 
@@ -92,8 +84,6 @@ export class CO2Globe {
       uMonthMean: this.refMid,
       uRefMid: this.refMid,
       uTexLimit: this.texLimit,
-      uGrainA: 0,
-      uGrainB: 0,
       uPaletteMix: this.paletteMix
     };
 
@@ -129,30 +119,9 @@ export class CO2Globe {
    * term at the record's highest monthly mean, plus a fully saturated local
    * deviation. Used to frame the camera so the globe never outgrows the view.
    */
-  /**
-   * How much grain a month needs to reach `grainTarget`, in ppm. Months that
-   * already carry more texture than the target get none. Added in quadrature
-   * since the grain and the data's own noise are independent.
-   */
-  grainFor(monthIndex: number): number {
-    if (this.grainTarget <= 0) return 0;
-    const own = this.dataset.months[monthIndex]?.fur ?? 0;
-    const deficit = this.grainTarget * this.grainTarget - own * own;
-    return deficit > 0 ? Math.sqrt(deficit) : 0;
-  }
-
-  /** True when any month on screen is being visually topped up. */
-  grainActive(monthIndex: number): boolean {
-    return this.grainFor(monthIndex) > 0.01;
-  }
-
   get maxRadius(): number {
     const maxMean = Math.max(...this.dataset.months.map((m) => m.mean));
-    return (
-      this.radiusBase +
-      this.perPpm * (maxMean - this.refMid) +
-      this.perPpm * (this.texLimit + this.grainTarget)
-    );
+    return this.radiusBase + this.perPpm * (maxMean - this.refMid) + this.perPpm * this.texLimit;
   }
 
   render(
@@ -179,8 +148,6 @@ export class CO2Globe {
     u.uMonthMean = meanA + (meanB - meanA) * t;
     u.uRefMid = this.refMid;
     u.uTexLimit = this.texLimit;
-    u.uGrainA = this.grainFor(monthA);
-    u.uGrainB = this.grainFor(monthB);
     u.uPaletteMix = this.paletteMix;
 
     this.model.draw(renderPass);
