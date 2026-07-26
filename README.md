@@ -13,9 +13,18 @@ grows: **+57 ppm since 2002, +15%**.
 
 ## Two frames, twenty-two years apart
 
-| April 2003 — 375 ppm | November 2025 — 421 ppm |
-| --- | --- |
-| ![](docs/early.png) | ![](docs/hero.png) |
+<!-- An HTML table with explicit 50% columns: a markdown table would size each
+     column to its header text, leaving the two stills at different scales. -->
+<table>
+  <tr>
+    <th width="50%">April 2003 — 375 ppm</th>
+    <th width="50%">November 2025 — 421 ppm</th>
+  </tr>
+  <tr>
+    <td><img src="docs/early.png" width="100%" alt="A small green globe, its surface finely furred"></td>
+    <td><img src="docs/hero.png" width="100%" alt="A much larger deep red globe"></td>
+  </tr>
+</table>
 
 The globe is smaller and green early on and larger and red at the end because
 both radius and colour follow the same value. The change in *surface texture*
