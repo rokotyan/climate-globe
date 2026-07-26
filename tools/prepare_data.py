@@ -49,7 +49,30 @@ assert LAT.shape == (76,) and LON.shape == (144,)
 AIRS_VAR = "mole_fraction_of_carbon_dioxide_in_free_troposphere"
 
 
-def load_airs(paths: list[Path]) -> tuple[list[tuple[int, int]], np.ndarray]:
+def read_airs_granule(path: Path) -> tuple[tuple[int, int], np.ndarray]:
+    """Read one AIRS L3 granule -> ((year, month), (76,144) ppm grid with NaNs)."""
+    m = re.search(r"(\d{4})\.(\d{2})\.\d{2}", path.name)
+    if not m:
+        raise SystemExit(f"Cannot parse date from filename: {path.name}")
+    year, month = int(m.group(1)), int(m.group(2))
+
+    # mask_and_scale=False: keep raw fill values, we mask them ourselves
+    ds = xr.open_dataset(path, engine="netcdf4", mask_and_scale=False)
+    if AIRS_VAR not in ds.variables:
+        raise SystemExit(f"{path.name}: no {AIRS_VAR} (data_vars: {list(ds.data_vars)})")
+    raw = np.asarray(ds[AIRS_VAR].values, dtype=np.float64)
+    ds.close()
+
+    if raw.shape[1] != LON.size or raw.shape[0] < LAT.size:
+        raise SystemExit(f"{path.name}: unexpected AIRS grid {raw.shape}")
+
+    grid = raw[: LAT.size, :] * 1e6  # mole fraction -> ppm
+    # AIRS uses -9999 / 0 style fills; drop anything outside physical range
+    grid[(grid < 300.0) | (grid > 500.0)] = np.nan
+    return (year, month), grid
+
+
+def load_airs(paths: list[Path], label: str = "AIRS") -> dict[tuple[int, int], np.ndarray]:
     """
     Read AIRS L3 monthly CO2 granules at native resolution.
 
@@ -57,43 +80,71 @@ def load_airs(paths: list[Path]) -> tuple[list[tuple[int, int]], np.ndarray]:
     -180..177.5 - its first 76 rows and all 144 columns ARE the app grid, so
     cells map 1:1 with no interpolation and the per-cell retrieval noise (the
     visual "fur") survives intact.
-
-    Returns (months, grids) where months is [(year, month), ...] sorted by
-    date and grids is (n, 76, 144) in ppm with NaN for missing cells.
     """
     records: dict[tuple[int, int], np.ndarray] = {}
-
     for i, path in enumerate(sorted(paths)):
-        m = re.search(r"(\d{4})\.(\d{2})\.\d{2}", path.name)
-        if not m:
-            raise SystemExit(f"Cannot parse date from filename: {path.name}")
-        year, month = int(m.group(1)), int(m.group(2))
-
-        # mask_and_scale=False: keep raw fill values, we mask them ourselves
-        ds = xr.open_dataset(path, engine="netcdf4", mask_and_scale=False)
-        if AIRS_VAR not in ds.variables:
-            raise SystemExit(f"{path.name}: no {AIRS_VAR} (data_vars: {list(ds.data_vars)})")
-        raw = np.asarray(ds[AIRS_VAR].values, dtype=np.float64)
-        ds.close()
-
-        if raw.shape[1] != LON.size or raw.shape[0] < LAT.size:
-            raise SystemExit(f"{path.name}: unexpected AIRS grid {raw.shape}")
-
-        grid = raw[: LAT.size, :] * 1e6  # mole fraction -> ppm
-        # AIRS uses -9999 / 0 style fills; drop anything outside physical range
-        grid[(grid < 300.0) | (grid > 500.0)] = np.nan
-
-        if (year, month) in records:
-            raise SystemExit(f"Duplicate month {year}-{month:02d} ({path.name})")
-        records[(year, month)] = grid
-
-        sys.stdout.write(f"\rreading AIRS {i + 1}/{len(paths)}")
+        key, grid = read_airs_granule(path)
+        if key in records:
+            raise SystemExit(f"Duplicate month {key[0]}-{key[1]:02d} within {label}")
+        records[key] = grid
+        sys.stdout.write(f"\rreading {label} {i + 1}/{len(paths)}")
         sys.stdout.flush()
     print()
+    return records
 
-    months = sorted(records)
-    grids = np.stack([records[k] for k in months])
-    return months, grids
+
+def splice_records(
+    primary: dict[tuple[int, int], np.ndarray],
+    extension: dict[tuple[int, int], np.ndarray],
+    bias_correct: bool = True,
+) -> tuple[list[tuple[int, int]], np.ndarray]:
+    """
+    Splice an extension product onto the primary record.
+
+    Primary wins wherever both cover a month; the extension only supplies
+    months the primary lacks. The two AIRS retrievals (AMSU-coupled AIRX3C2M
+    and IR-only AIRS3C2M) differ slightly, so any offset measured over their
+    overlap is removed from the extension - otherwise the animation would
+    show a visible step at the join.
+    """
+    overlap = sorted(set(primary) & set(extension))
+    offset = 0.0
+
+    if overlap:
+        diffs = []
+        for key in overlap:
+            a, b = primary[key], extension[key]
+            both = np.isfinite(a) & np.isfinite(b)
+            if both.any():
+                diffs.append(float(np.mean(b[both] - a[both])))
+        if diffs:
+            offset = float(np.mean(diffs))
+            print(
+                f"overlap: {len(overlap)} months "
+                f"({overlap[0][0]}-{overlap[0][1]:02d} .. {overlap[-1][0]}-{overlap[-1][1]:02d})"
+            )
+            print(
+                f"  extension bias vs primary: {offset:+.2f} ppm mean "
+                f"(per-month spread {np.std(diffs):.2f})"
+            )
+    else:
+        print("overlap: none - cannot verify continuity across the splice")
+
+    if not bias_correct:
+        offset = 0.0
+    elif offset:
+        print(f"  applying {-offset:+.2f} ppm to the extension to match the primary")
+
+    merged = dict(primary)
+    added = 0
+    for key, grid in extension.items():
+        if key not in merged:
+            merged[key] = grid - offset
+            added += 1
+    print(f"  spliced in {added} extension months")
+
+    months = sorted(merged)
+    return months, np.stack([merged[k] for k in months])
 
 
 def find_xco2_var(ds: xr.Dataset) -> str:
@@ -216,7 +267,22 @@ def gap_fill(months: np.ndarray) -> np.ndarray:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("inputs", nargs="+", type=Path, help="Input netCDF file(s)")
+    parser.add_argument("inputs", nargs="+", type=Path, help="Input granule(s) / netCDF file(s)")
+    parser.add_argument(
+        "--extend",
+        nargs="+",
+        type=Path,
+        default=[],
+        metavar="HDF",
+        help="Additional AIRS granules used only for months the main inputs lack "
+        "(e.g. AIRS3C2M to carry the record past Feb 2012). Bias-corrected "
+        "against the main inputs over any overlapping months.",
+    )
+    parser.add_argument(
+        "--no-bias-correct",
+        action="store_true",
+        help="Splice --extend data as-is instead of removing its offset",
+    )
     parser.add_argument("-o", "--outdir", type=Path, default=Path(__file__).parent / "../public/data")
     args = parser.parse_args()
 
@@ -224,8 +290,19 @@ def main() -> None:
     # regridded onto the app grid.
     is_airs = all(p.suffix.lower() == ".hdf" for p in args.inputs)
 
+    if args.extend and not is_airs:
+        raise SystemExit("--extend is only supported for AIRS .hdf inputs")
+
     if is_airs:
-        month_keys, grids = load_airs(args.inputs)
+        records = load_airs(args.inputs, label="primary")
+        if args.extend:
+            ext = load_airs(args.extend, label="extension")
+            month_keys, grids = splice_records(
+                records, ext, bias_correct=not args.no_bias_correct
+            )
+        else:
+            month_keys = sorted(records)
+            grids = np.stack([records[k] for k in month_keys])
         n = len(month_keys)
         print(f"{n} months, {month_keys[0][0]}-{month_keys[0][1]:02d} .. "
               f"{month_keys[-1][0]}-{month_keys[-1][1]:02d}  (native AIRS grid, no regridding)")
@@ -261,15 +338,20 @@ def main() -> None:
     vmax = float(np.ceil(grids.max()))
     print(f"quantization range: {vmin} .. {vmax} ppm (full data range, no clipping)")
 
-    # Suggested display ramp. For AIRS this reproduces the original Cinder
-    # mapping exactly: hue = clamp((1 - (co2-370)/25) * 0.25, 0, 0.3) is a
-    # linear ramp from 365 ppm (hue 0.3, green) to 395 ppm (hue 0, red).
-    if is_airs:
-        color_min, color_max = 365.0, 395.0
-    else:
-        color_min = float(np.floor(np.percentile(grids, 1)))
-        color_max = float(np.ceil(np.percentile(grids, 99)))
-    print(f"display ramp: {color_min} .. {color_max} ppm")
+    # Suggested display ramp, spanning the record's monthly means with headroom
+    # so neither end saturates and the whole animation stays legible.
+    #
+    # The original Cinder ramp was hue = clamp((1-(co2-370)/25)*0.25, 0, 0.3),
+    # i.e. linear from 365 ppm (green) to 395 ppm (red) - correct for its
+    # 2002-2012 record ending near 392 ppm. This formula reproduces that low
+    # anchor (365) and grows the top end as the record extends, instead of
+    # pinning 395 and flattening every later month to saturated red.
+    color_min = float(np.floor(means.min() - 6.0))
+    color_max = float(np.ceil(means.max() + 4.0))
+    print(
+        f"display ramp: {color_min} .. {color_max} ppm "
+        f"(monthly means {means.min():.1f} .. {means.max():.1f})"
+    )
 
     quantized = np.clip((grids - vmin) / (vmax - vmin) * 65535, 0, 65535).round().astype("<u2")
 

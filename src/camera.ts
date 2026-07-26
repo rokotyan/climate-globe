@@ -55,10 +55,31 @@ export class Camera {
     this.distDest = Math.min(this.maxDist, Math.max(this.minDist, this.distDest + delta));
   }
 
+  /**
+   * Frame the globe: distance is derived from its largest possible radius so
+   * the framing holds no matter how long the record is (the globe grows with
+   * the CO2 trend). Keeps the original's 0.8 dolly-in ratio.
+   */
+  frameRadius(maxRadius: number, snap = true): void {
+    this.distDest = maxRadius * 2.6;
+    this.minDist = maxRadius * 1.05;
+    this.maxDist = maxRadius * 12;
+    // snap=false leaves the current distance alone, so the normal easing
+    // glides to the new framing instead of jumping (used by the sliders).
+    if (snap) this.dist = this.distDest * 0.8;
+  }
+
   /** Column-major view-projection matrix for the current state. */
   getViewProjection(aspect: number): Float32Array {
+    // In portrait/narrow viewports, widen the vertical FOV so the horizontal
+    // extent stays as wide as it is at square aspect - otherwise the globe
+    // gets clipped left and right.
+    const fovy = (this.fovyDegrees * Math.PI) / 180;
+    const effectiveFovy =
+      aspect < 1 ? 2 * Math.atan(Math.tan(fovy / 2) / aspect) : fovy;
+
     this.projection.perspective({
-      fovy: (this.fovyDegrees * Math.PI) / 180,
+      fovy: effectiveFovy,
       aspect,
       near: this.near,
       far: this.far

@@ -1,6 +1,7 @@
 import type {CO2Globe} from './co2-globe';
 import type {Playback} from './playback';
 import type {Hud} from './hud';
+import type {Camera} from './camera';
 import type {CO2Dataset} from './data';
 
 /**
@@ -23,14 +24,24 @@ export class Controls {
   private root = document.getElementById('controls') as HTMLDivElement;
   private refreshers: Array<() => void> = [];
 
-  constructor(globe: CO2Globe, playback: Playback, hud: Hud, dataset: CO2Dataset) {
+  constructor(
+    globe: CO2Globe,
+    playback: Playback,
+    hud: Hud,
+    dataset: CO2Dataset,
+    camera: Camera
+  ) {
+    // Size-changing sliders re-frame the camera so the globe cannot outgrow
+    // the viewport; snap=false lets the existing easing glide there.
+    const reframe = () => camera.frameRadius(globe.maxRadius, false);
+
     const specs: SliderSpec[] = [
       {label: 'Displacement (units/ppm)', min: 0, max: 12, step: 0.25, decimals: 2,
-        get: () => globe.perPpm, set: (v) => (globe.perPpm = v)},
+        get: () => globe.perPpm, set: (v) => { globe.perPpm = v; reframe(); }},
       {label: 'Texture limit (ppm)', min: 0, max: 25, step: 0.5, decimals: 1,
-        get: () => globe.texLimit, set: (v) => (globe.texLimit = v)},
+        get: () => globe.texLimit, set: (v) => { globe.texLimit = v; reframe(); }},
       {label: 'Base radius', min: 120, max: 360, step: 5, decimals: 0,
-        get: () => globe.radiusBase, set: (v) => (globe.radiusBase = v)},
+        get: () => globe.radiusBase, set: (v) => { globe.radiusBase = v; reframe(); }},
       {label: 'Lighting', min: 0, max: 1, step: 0.05, decimals: 2,
         get: () => globe.lightMix, set: (v) => (globe.lightMix = v)},
       {label: 'Color min (ppm)', min: dataset.vmin - 10, max: dataset.vmax, step: 1, decimals: 0,

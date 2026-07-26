@@ -7,9 +7,12 @@ falls back to synthetic data (or force it with `?synthetic`).
 ## Current dataset: AIRS — the original project's own source
 
 **AIRX3C2M v005**, mid-tropospheric CO₂, monthly, Sept 2002 – Feb 2012
-(114 granules). This is exactly what the original Cinder piece used: the AIRS
-L3 grid's first 76 rows × 144 columns *are* the `CO2Mesh.h` grid, so the
-pipeline reads it at **native resolution with no interpolation**.
+(114 granules), extended with **AIRS3C2M v005** (the IR-only retrieval,
+Jan 2010 – Feb 2017) to reach **174 months, Sept 2002 – Feb 2017**.
+
+AIRX3C2M is exactly what the original Cinder piece used: the AIRS L3 grid's
+first 76 rows × 144 columns *are* the `CO2Mesh.h` grid, so the pipeline reads
+it at **native resolution with no interpolation**.
 
 That matters visually. AIRS carries ~1.0–1.25 ppm of per-cell retrieval noise,
 and that noise is the fine "fur" of the original artwork. Regridding any
@@ -37,16 +40,27 @@ xargs -P 6 -n 1 curl -sS -L -H "Authorization: Bearer $EDL_TOKEN" -O < ../airs_u
 file *.hdf | grep -v "version 4"   # should print nothing
 cd ..
 
-# 3. Convert
-python prepare_data.py airs_hdf/*.hdf
+# 3. Extend to Feb 2017 with the IR-only retrieval (same steps, AIRS3C2M)
+curl -s "https://cmr.earthdata.nasa.gov/search/granules.json?short_name=AIRS3C2M&version=005&page_size=2000&sort_key=start_date" \
+  | python -c "import json,sys; [print([l['href'] for l in g['links'] if l['href'].endswith('.hdf') and l['href'].startswith('http')][0]) for g in json.load(sys.stdin)['feed']['entry']]" \
+  > airs3_urls.txt
+mkdir -p airs3_hdf && cd airs3_hdf
+xargs -P 6 -n 1 curl -sS -L -H "Authorization: Bearer $EDL_TOKEN" -O < ../airs3_urls.txt
+cd ..
+
+# 4. Convert. --extend supplies only months the primary lacks, and removes any
+#    offset measured over the 26-month overlap (2010-01..2012-02) so the
+#    animation has no step at the join. Measured bias: -0.20 ppm.
+python prepare_data.py airs_hdf/*.hdf --extend airs3_hdf/*.hdf
 ```
+
+Omit `--extend` for the original 114-month 2002–2012 record alone.
 
 The HDF-EOS2 granules are read via `xarray`/`netCDF4` (netcdf-c has HDF4
 support built in) — `pyhdf` and a separate HDF4 library are **not** needed.
 
-To extend past Feb 2012, **AIRS3C2M v005** (the AIRS-only retrieval) covers
-Jan 2010 – Feb 2017 on the same grid; the 2010–2012 overlap lets you check
-continuity before appending it.
+AIRS CO₂ ends at Feb 2017; there is no later AIRS CO₂ product. For more recent
+years see the alternatives below (necessarily smoother).
 
 ## Alternative: NOAA CarbonTracker (no account needed)
 
@@ -107,8 +121,14 @@ also openly mirrored on CEDA (no account):
 - **AIRS `.hdf` inputs**: read at native resolution, no interpolation (the
   AIRS grid's first 76 rows × 144 cols are already the app grid), converted
   from mole fraction to ppm, with non-physical fills (<300 or >500 ppm)
-  masked. Emits `colorMin/colorMax` of 365/395, which reproduces the original
-  Cinder ramp `hue = clamp((1-(co2-370)/25)*0.25, 0, 0.3)` exactly.
+  masked. `--extend` granules fill only uncovered months and are bias-corrected
+  against the primary over the overlap.
+- **Display ramp** (`colorMin`/`colorMax` in `co2.json`): spans the record's
+  monthly means with headroom. The original Cinder ramp
+  `hue = clamp((1-(co2-370)/25)*0.25, 0, 0.3)` is linear from 365 ppm (green)
+  to 395 ppm (red) — right for a record ending near 392 ppm. The formula
+  reproduces that 365 low anchor and grows the top end with the record;
+  pinning 395 would flatten every month after early 2013 to saturated red.
 - **Gridded netCDF inputs**: bilinearly regridded onto the app grid (cyclic in
   longitude), taking the surface level of 3D files and masking raw 1e20 fills.
 - **Both**: fill coverage gaps spatially *within each month* (nearest observed

@@ -12,11 +12,14 @@ npm install
 npm run dev        # http://localhost:5199
 ```
 
-The shipped data is **AIRS AIRX3C2M** mid-tropospheric CO₂, Sept 2002 – Feb
-2012 (114 months) — the original project's own source, read at native
-resolution so its per-cell retrieval noise (the fine "fur" of the artwork) is
-preserved. To regenerate or swap datasets see [tools/README.md](tools/README.md).
-Without `public/data/*`, the app falls back to a synthetic dataset.
+The shipped data is **AIRS mid-tropospheric CO₂, Sept 2002 – Feb 2017**
+(174 months): AIRX3C2M — the original project's own source — through Feb 2012,
+spliced with the IR-only AIRS3C2M retrieval after that. Both are read at
+native resolution so their per-cell retrieval noise (the fine "fur" of the
+artwork) is preserved. Global mean rises 371.6 → 403.3 ppm.
+
+To regenerate or swap datasets see [tools/README.md](tools/README.md). Without
+`public/data/*`, the app falls back to a synthetic dataset.
 
 URL params: `?synthetic` forces synthetic data, `?start=<n>` starts playback
 at month index *n*.

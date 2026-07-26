@@ -103,6 +103,16 @@ export class CO2Globe {
     });
   }
 
+  /**
+   * Largest radius any month can reach with the current settings - the trend
+   * term at the record's highest monthly mean, plus a fully saturated local
+   * deviation. Used to frame the camera so the globe never outgrows the view.
+   */
+  get maxRadius(): number {
+    const maxMean = Math.max(...this.dataset.months.map((m) => m.mean));
+    return this.radiusBase + this.perPpm * (maxMean - this.refMid) + this.perPpm * this.texLimit;
+  }
+
   render(
     renderPass: RenderPass,
     viewProj: Float32Array,

@@ -25,7 +25,8 @@ async function main(): Promise<void> {
   if (startParam !== null) playback.seek(Number(startParam));
   const globe = new CO2Globe(device, dataset);
   const hud = new Hud(dataset);
-  const controls = new Controls(globe, playback, hud, dataset);
+  const controls = new Controls(globe, playback, hud, dataset, camera);
+  camera.frameRadius(globe.maxRadius);
 
   // --- Input (mappings from the original EarthquakeApp.cpp) ---
   const overControls = (e: Event) => (e.target as HTMLElement)?.closest('#controls') !== null;
