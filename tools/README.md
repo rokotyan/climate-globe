@@ -59,8 +59,43 @@ Omit `--extend` for the original 114-month 2002–2012 record alone.
 The HDF-EOS2 granules are read via `xarray`/`netCDF4` (netcdf-c has HDF4
 support built in) — `pyhdf` and a separate HDF4 library are **not** needed.
 
-AIRS CO₂ ends at Feb 2017; there is no later AIRS CO₂ product. For more recent
-years see the alternatives below (necessarily smoother).
+### Reaching the present: CLIMCAPS
+
+AIRX3C2M/AIRS3C2M stop at Feb 2017, but **SNDRAQIL3SMCCP** (AIRS IR-only
+CLIMCAPS L3, monthly, 1°×1°) runs 2002 → within ~5 months of today and carries
+`co2_vmr_uppertrop`. Full granules are 239 MB, so subset them over OPeNDAP —
+the DAP4 constraint pulls ~405 KB each, 580× smaller:
+
+```sh
+python - <<'PY' > climcaps_urls.txt
+import json, urllib.request
+q=('https://cmr.earthdata.nasa.gov/search/granules.json?short_name=SNDRAQIL3SMCCP'
+   '&temporal=2013-12-01T00:00:00Z,2030-01-01T00:00:00Z&page_size=300&sort_key=start_date')
+for g in json.load(urllib.request.urlopen(q))['feed']['entry']:
+    u=next(l['href'] for l in g['links'] if l['href'].endswith('.nc') and 'data.gesdisc' in l['href'])
+    print(u.replace('https://data.gesdisc.earthdata.nasa.gov/data/',
+                    'https://sounder.gesdisc.eosdis.nasa.gov/opendap/')
+          + '.dap.nc4?dap4.ce=/co2_vmr_uppertrop;/lat;/lon')
+PY
+
+mkdir -p climcaps
+while read url; do
+  d=$(echo "$url" | grep -oE 'AIRS\.[0-9]{8}' | cut -d. -f2)
+  [ -s "climcaps/climcaps_$d.nc" ] || curl -sS -f -L -H "Authorization: Bearer $EDL_TOKEN" \
+    -o "climcaps/climcaps_$d.nc" "$url"
+done < climcaps_urls.txt
+
+python prepare_data.py airs_hdf/*.hdf --extend airs3_hdf/*.hdf --extend climcaps/*.nc
+```
+
+Note the DAP2 form (`.nc4?var`) silently returns all zeros here — use the DAP4
+`.dap.nc4?dap4.ce=` form and sanity-check the values.
+
+CLIMCAPS is 1°×1°, sampled onto the app grid by nearest neighbour rather than
+averaged (averaging finer cells would smooth away the retrieval noise). Being
+a modern quality-screened product it is nonetheless much smoother than the old
+retrievals — ~0.39 ppm cell-to-cell vs 1.19 for AIRX3C2M — which is what the
+app's Grain slider exists to compensate for.
 
 ## Alternative: NOAA CarbonTracker (no account needed)
 

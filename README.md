@@ -12,11 +12,27 @@ npm install
 npm run dev        # http://localhost:5199
 ```
 
-The shipped data is **AIRS mid-tropospheric CO₂, Sept 2002 – Feb 2017**
-(174 months): AIRX3C2M — the original project's own source — through Feb 2012,
-spliced with the IR-only AIRS3C2M retrieval after that. Both are read at
-native resolution so their per-cell retrieval noise (the fine "fur" of the
-artwork) is preserved. Global mean rises 371.6 → 403.3 ppm.
+The shipped data is **AIRS CO₂, Sept 2002 – Feb 2026** (280 months), spliced
+from three retrievals of the same instrument, each bias-corrected against the
+previous over their overlap:
+
+| Months | Product | Fur (cell-to-cell) |
+|---|---|---|
+| 2002-09 – 2012-02 | AIRX3C2M (AMSU-coupled) — the original's own source | 1.19 ppm |
+| 2012-03 – 2017-02 | AIRS3C2M (IR-only) | 1.65 ppm |
+| 2017-03 – 2026-02 | CLIMCAPS L3 (1°, modern algorithm) | 0.39 ppm |
+
+Global mean rises 371.6 → 421.4 ppm. The header names the product for the
+month on screen. All three are sampled at native resolution (nearest
+neighbour, never averaged) so their per-cell retrieval noise — the fine "fur"
+of the artwork — is preserved.
+
+Note the fur column: modern quality-screened retrievals deliberately suppress
+the per-cell scatter that gives the early years their texture, so the post-2017
+months are intrinsically smoother. The **Grain target** slider compensates,
+topping each month up to a common texture level (adding least where the data
+already has its own); the header then reads "… + grain" so synthetic texture is
+never passed off as measured.
 
 To regenerate or swap datasets see [tools/README.md](tools/README.md). Without
 `public/data/*`, the app falls back to a synthetic dataset.
@@ -45,6 +61,10 @@ parameters so you can dial the aesthetic without editing code:
 - **Base radius** — globe size at the record's midpoint ppm
 - **Lighting** — 0 = unlit smooth vertex colors (faithful to the original),
   1 = faceted relief shading
+- **Grain target (ppm)** — common cell-to-cell texture level. Each month is
+  topped up only by what it lacks, so the noisy early AIRS years are barely
+  touched while the smooth modern ones gain the missing fur. 0 = every month
+  exactly as measured
 - **Color min / max (ppm)** — the green→red ramp domain (also relabels the
   colorbar and re-tints the readout)
 - **Speed (months/sec)** — playback rate (original ~10)

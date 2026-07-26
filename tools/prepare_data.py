@@ -49,6 +49,64 @@ assert LAT.shape == (76,) and LON.shape == (144,)
 AIRS_VAR = "mole_fraction_of_carbon_dioxide_in_free_troposphere"
 
 
+CLIMCAPS_VAR = "co2_vmr_uppertrop"
+
+
+def read_climcaps(path: Path) -> tuple[tuple[int, int], np.ndarray]:
+    """
+    Read one AIRS CLIMCAPS L3 monthly granule (1x1 degree) onto the app grid.
+
+    Sampled with NEAREST NEIGHBOUR, never averaged: like AIRX3C2M this is a
+    real retrieval, and its per-cell noise is the visual "fur". Averaging the
+    finer 1-degree cells into the app's 2-degree rows would smooth it away -
+    the same mistake that made the model products look blobby.
+
+    The two orbit passes (day/night) are averaged, matching how the older AIRS
+    monthly products combine them.
+    """
+    m = re.search(r"(\d{4})(\d{2})\d{2}", path.name)
+    if not m:
+        raise SystemExit(f"Cannot parse date from filename: {path.name}")
+    year, month = int(m.group(1)), int(m.group(2))
+
+    ds = xr.open_dataset(path)
+    if CLIMCAPS_VAR not in ds.variables:
+        raise SystemExit(f"{path.name}: no {CLIMCAPS_VAR}")
+    da = ds[CLIMCAPS_VAR]
+    if "orbit_pass" in da.dims:
+        da = da.mean(dim="orbit_pass", skipna=True)
+    field = np.asarray(da.values, dtype=np.float64) * 1e6  # m3/m3 -> ppm
+    src_lat = np.asarray(ds["lat"].values, dtype=np.float64)
+    src_lon = np.asarray(ds["lon"].values, dtype=np.float64)
+    ds.close()
+
+    rows = np.abs(src_lat[None, :] - LAT[:, None]).argmin(axis=1)
+    cols = np.abs(src_lon[None, :] - LON[:, None]).argmin(axis=1)
+    grid = field[np.ix_(rows, cols)]
+    grid[(grid < 300.0) | (grid > 500.0)] = np.nan
+    return (year, month), grid
+
+
+def source_label(path: Path) -> str:
+    """
+    Human-readable provenance for a granule, shown in the app's header so the
+    viewer can see which instrument/product each month comes from.
+    """
+    name = path.name
+    if "CO2Std_IR" in name:
+        return "AIRS AIRS3C2M (IR-only)"
+    if "CO2Std" in name:
+        return "AIRS AIRX3C2M"
+    if name.startswith("climcaps") or "CLIMCAPS" in name:
+        return "AIRS CLIMCAPS L3"
+    m = re.match(r"(CT\d{4})\.", name)
+    if m:
+        return f"NOAA CarbonTracker {m.group(1)}"
+    if "OBS4MIPS" in name.upper() or "GHG_PRODUCTS" in name.upper():
+        return "C3S/ESA CCI merged satellite XCO₂"
+    return path.stem
+
+
 def read_airs_granule(path: Path) -> tuple[tuple[int, int], np.ndarray]:
     """Read one AIRS L3 granule -> ((year, month), (76,144) ppm grid with NaNs)."""
     m = re.search(r"(\d{4})\.(\d{2})\.\d{2}", path.name)
@@ -72,86 +130,132 @@ def read_airs_granule(path: Path) -> tuple[tuple[int, int], np.ndarray]:
     return (year, month), grid
 
 
-def load_airs(paths: list[Path], label: str = "AIRS") -> dict[tuple[int, int], np.ndarray]:
-    """
-    Read AIRS L3 monthly CO2 granules at native resolution.
+# A loaded record: month key -> (grid in ppm, provenance label)
+Record = dict[tuple[int, int], tuple[np.ndarray, str]]
 
-    The AIRS grid is 91x144 with latitudes 89.5, 88, 86 ... and longitudes
-    -180..177.5 - its first 76 rows and all 144 columns ARE the app grid, so
-    cells map 1:1 with no interpolation and the per-cell retrieval noise (the
-    visual "fur") survives intact.
+
+def load_source(paths: list[Path]) -> Record:
     """
-    records: dict[tuple[int, int], np.ndarray] = {}
-    for i, path in enumerate(sorted(paths)):
+    Load one group of inputs onto the app grid.
+
+    AIRS .hdf granules are read at native resolution (no interpolation, so
+    their per-cell "fur" survives); gridded netCDF is bilinearly regridded and
+    resampled to monthly means, which also collapses daily files (e.g. the
+    CarbonTracker xCO2 dailies) into months.
+    """
+    hdf = sorted(p for p in paths if p.suffix.lower() == ".hdf")
+    climcaps = sorted(
+        p for p in paths if p.suffix.lower() != ".hdf" and source_label(p) == "AIRS CLIMCAPS L3"
+    )
+    nc = sorted(p for p in paths if p.suffix.lower() != ".hdf" and p not in climcaps)
+    out: Record = {}
+
+    for i, path in enumerate(hdf):
         key, grid = read_airs_granule(path)
-        if key in records:
-            raise SystemExit(f"Duplicate month {key[0]}-{key[1]:02d} within {label}")
-        records[key] = grid
-        sys.stdout.write(f"\rreading {label} {i + 1}/{len(paths)}")
+        out[key] = (grid, source_label(path))
+        sys.stdout.write(f"\rreading AIRS {i + 1}/{len(hdf)}")
         sys.stdout.flush()
-    print()
-    return records
+    if hdf:
+        print()
+
+    for i, path in enumerate(climcaps):
+        key, grid = read_climcaps(path)
+        out[key] = (grid, source_label(path))
+        sys.stdout.write(f"\rreading CLIMCAPS {i + 1}/{len(climcaps)}")
+        sys.stdout.flush()
+    if climcaps:
+        print()
+
+    if nc:
+        da = load_input(nc)
+        # Name the actual quantity used, so the app's header is not misleading
+        # (CarbonTracker's xCO2 files also carry near-surface co2_400m, which
+        # is what find_xco2_var prefers).
+        descriptor = {
+            "co2_400m": "near-surface",
+            "xco2": "column",
+            "co2": "surface",
+        }.get(str(da.name), str(da.name))
+        label = f"{source_label(nc[0])} ({descriptor})"
+        # Daily inputs -> monthly means; already-monthly inputs are unchanged.
+        da = da.resample(time="MS").mean()
+        n = da.sizes["time"]
+        for i in range(n):
+            ts = str(np.datetime_as_string(da["time"].values[i], unit="M"))
+            key = (int(ts[:4]), int(ts[5:7]))
+            out[key] = (regrid_month(da.isel(time=i).compute()), label)
+            sys.stdout.write(f"\rregridding {label} {i + 1}/{n}")
+            sys.stdout.flush()
+        print()
+
+    return out
 
 
 def splice_records(
-    primary: dict[tuple[int, int], np.ndarray],
-    extension: dict[tuple[int, int], np.ndarray],
-    bias_correct: bool = True,
-) -> tuple[list[tuple[int, int]], np.ndarray]:
+    primary: Record, extensions: list[Record], bias_correct: bool = True
+) -> tuple[list[tuple[int, int]], np.ndarray, list[str]]:
     """
-    Splice an extension product onto the primary record.
+    Splice extension products onto the primary record, in order.
 
-    Primary wins wherever both cover a month; the extension only supplies
-    months the primary lacks. The two AIRS retrievals (AMSU-coupled AIRX3C2M
-    and IR-only AIRS3C2M) differ slightly, so any offset measured over their
-    overlap is removed from the extension - otherwise the animation would
-    show a visible step at the join.
+    Earlier sources always win: an extension only supplies months nothing
+    before it covered. Products measure different things (AMSU-coupled vs
+    IR-only AIRS retrievals; mid-troposphere vs column-averaged CO2), so each
+    extension is shifted by the mean offset measured against the record so far
+    over their overlapping months - otherwise the animation steps at the join.
     """
-    overlap = sorted(set(primary) & set(extension))
-    offset = 0.0
+    merged: Record = dict(primary)
 
-    if overlap:
-        diffs = []
-        for key in overlap:
-            a, b = primary[key], extension[key]
-            both = np.isfinite(a) & np.isfinite(b)
-            if both.any():
-                diffs.append(float(np.mean(b[both] - a[both])))
-        if diffs:
-            offset = float(np.mean(diffs))
-            print(
-                f"overlap: {len(overlap)} months "
-                f"({overlap[0][0]}-{overlap[0][1]:02d} .. {overlap[-1][0]}-{overlap[-1][1]:02d})"
-            )
-            print(
-                f"  extension bias vs primary: {offset:+.2f} ppm mean "
-                f"(per-month spread {np.std(diffs):.2f})"
-            )
-    else:
-        print("overlap: none - cannot verify continuity across the splice")
-
-    if not bias_correct:
+    for ext in extensions:
+        if not ext:
+            continue
+        label = next(iter(ext.values()))[1]
+        overlap = sorted(set(merged) & set(ext))
         offset = 0.0
-    elif offset:
-        print(f"  applying {-offset:+.2f} ppm to the extension to match the primary")
 
-    merged = dict(primary)
-    added = 0
-    for key, grid in extension.items():
-        if key not in merged:
-            merged[key] = grid - offset
-            added += 1
-    print(f"  spliced in {added} extension months")
+        if overlap:
+            diffs = []
+            for key in overlap:
+                a, b = merged[key][0], ext[key][0]
+                both = np.isfinite(a) & np.isfinite(b)
+                if both.any():
+                    diffs.append(float(np.mean(b[both] - a[both])))
+            if diffs:
+                offset = float(np.mean(diffs))
+                print(
+                    f"{label}: overlap {len(overlap)} months "
+                    f"({overlap[0][0]}-{overlap[0][1]:02d}..{overlap[-1][0]}-{overlap[-1][1]:02d}), "
+                    f"bias {offset:+.2f} ppm (spread {np.std(diffs):.2f})"
+                )
+        else:
+            print(f"{label}: no overlap - continuity across this splice is unverified")
+
+        if not bias_correct:
+            offset = 0.0
+        elif offset:
+            print(f"  applying {-offset:+.2f} ppm to match the record so far")
+
+        added = 0
+        for key, (grid, lbl) in ext.items():
+            if key not in merged:
+                merged[key] = (grid - offset, lbl)
+                added += 1
+        print(f"  spliced in {added} months")
 
     months = sorted(merged)
-    return months, np.stack([merged[k] for k in months])
+    grids = np.stack([merged[k][0] for k in months])
+    labels = [merged[k][1] for k in months]
+    return months, grids, labels
 
 
 def find_xco2_var(ds: xr.Dataset) -> str:
-    for name in ("xco2", "XCO2", "co2", "xco2_ppm"):
+    # co2_400m first: CarbonTracker's xCO2 files carry both it and the
+    # column-average, and near-surface CO2 has ~4x more cell-to-cell
+    # structure, which sits far closer to AIRS visually than the very smooth
+    # column product does.
+    for name in ("co2_400m", "xco2", "XCO2", "co2", "xco2_ppm"):
         if name in ds.data_vars:
             return name
-    raise SystemExit(f"No XCO2 variable found; data_vars: {list(ds.data_vars)}")
+    raise SystemExit(f"No CO2 variable found; data_vars: {list(ds.data_vars)}")
 
 
 def load_input(paths: list[Path]) -> xr.DataArray:
@@ -270,13 +374,15 @@ def main() -> None:
     parser.add_argument("inputs", nargs="+", type=Path, help="Input granule(s) / netCDF file(s)")
     parser.add_argument(
         "--extend",
+        action="append",
         nargs="+",
         type=Path,
         default=[],
-        metavar="HDF",
-        help="Additional AIRS granules used only for months the main inputs lack "
-        "(e.g. AIRS3C2M to carry the record past Feb 2012). Bias-corrected "
-        "against the main inputs over any overlapping months.",
+        metavar="FILE",
+        help="Files supplying only months nothing earlier covers, bias-corrected "
+        "against the record so far over any overlap. Repeat the flag to chain "
+        "several products, most-preferred first "
+        "(e.g. --extend AIRS3C2M/*.hdf --extend carbontracker/*.nc).",
     )
     parser.add_argument(
         "--no-bias-correct",
@@ -286,43 +392,37 @@ def main() -> None:
     parser.add_argument("-o", "--outdir", type=Path, default=Path(__file__).parent / "../public/data")
     args = parser.parse_args()
 
-    # AIRS granules are read natively (no interpolation); anything else is
-    # regridded onto the app grid.
-    is_airs = all(p.suffix.lower() == ".hdf" for p in args.inputs)
+    primary = load_source(args.inputs)
+    extensions = [load_source(group) for group in args.extend]
+    month_keys, grids, sources = splice_records(
+        primary, extensions, bias_correct=not args.no_bias_correct
+    )
 
-    if args.extend and not is_airs:
-        raise SystemExit("--extend is only supported for AIRS .hdf inputs")
+    n = len(month_keys)
+    print(
+        f"{n} months, {month_keys[0][0]}-{month_keys[0][1]:02d} .. "
+        f"{month_keys[-1][0]}-{month_keys[-1][1]:02d}"
+    )
+    for label in dict.fromkeys(sources):
+        covered = [k for k, s in zip(month_keys, sources) if s == label]
+        print(
+            f"  {label}: {len(covered)} months "
+            f"({covered[0][0]}-{covered[0][1]:02d}..{covered[-1][0]}-{covered[-1][1]:02d})"
+        )
 
-    if is_airs:
-        records = load_airs(args.inputs, label="primary")
-        if args.extend:
-            ext = load_airs(args.extend, label="extension")
-            month_keys, grids = splice_records(
-                records, ext, bias_correct=not args.no_bias_correct
+    gaps = [
+        (y, m)
+        for (y, m) in (
+            (k // 12, k % 12 + 1)
+            for k in range(
+                month_keys[0][0] * 12 + month_keys[0][1] - 1,
+                month_keys[-1][0] * 12 + month_keys[-1][1],
             )
-        else:
-            month_keys = sorted(records)
-            grids = np.stack([records[k] for k in month_keys])
-        n = len(month_keys)
-        print(f"{n} months, {month_keys[0][0]}-{month_keys[0][1]:02d} .. "
-              f"{month_keys[-1][0]}-{month_keys[-1][1]:02d}  (native AIRS grid, no regridding)")
-    else:
-        da = load_input(args.inputs)
-        times = da["time"].values
-        n = len(times)
-        print(f"{n} months, {str(times[0])[:7]} .. {str(times[-1])[:7]}")
-
-        grids = np.empty((n, LAT.size, LON.size), dtype=np.float64)
-        for i in range(n):
-            grids[i] = regrid_month(da.isel(time=i).compute())
-            sys.stdout.write(f"\rregridding {i + 1}/{n}")
-            sys.stdout.flush()
-        print()
-        month_keys = [
-            (int(str(np.datetime_as_string(t, unit="M"))[:4]),
-             int(str(np.datetime_as_string(t, unit="M"))[5:7]))
-            for t in times
-        ]
+        )
+        if (y, m) not in set(month_keys)
+    ]
+    if gaps:
+        print(f"  WARNING: {len(gaps)} missing month(s) in the span, e.g. {gaps[:6]}")
 
     missing = int(np.isnan(grids).sum())
     print(f"missing cells: {missing} of {grids.size} ({100 * missing / grids.size:.1f}%)")
@@ -355,8 +455,28 @@ def main() -> None:
 
     quantized = np.clip((grids - vmin) / (vmax - vmin) * 65535, 0, 65535).round().astype("<u2")
 
+    # Per-month cell-to-cell RMS ("fur"): how much fine texture each month
+    # actually carries. The old AIRS retrievals run ~1-2 ppm; modern
+    # quality-screened products are ~0.4. The app uses this to optionally top
+    # the smoother months up to a common texture level.
+    from scipy import ndimage as _ndi
+
+    fur = [
+        float(np.std(g - _ndi.uniform_filter(g, size=3, mode="nearest"))) for g in grids
+    ]
+    print(f"per-month fur: {min(fur):.2f} .. {max(fur):.2f} ppm cell-to-cell RMS")
+    for label in dict.fromkeys(sources):
+        vals = [f for f, s in zip(fur, sources) if s == label]
+        print(f"  {label}: {np.mean(vals):.2f} ppm mean")
+
     months = [
-        {"year": y, "month": mo, "mean": round(float(means[i]), 2)}
+        {
+            "year": y,
+            "month": mo,
+            "mean": round(float(means[i]), 2),
+            "source": sources[i],
+            "fur": round(fur[i], 3),
+        }
         for i, (y, mo) in enumerate(month_keys)
     ]
 

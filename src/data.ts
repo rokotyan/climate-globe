@@ -22,6 +22,10 @@ export interface MonthInfo {
   month: number; // 1-12
   /** Area-weighted global mean ppm */
   mean: number;
+  /** Provenance label, e.g. "AIRS AIRX3C2M" - shown in the header */
+  source?: string;
+  /** Measured cell-to-cell RMS in ppm (this month's own fine texture) */
+  fur?: number;
 }
 
 export interface CO2Dataset {
@@ -133,7 +137,7 @@ export function generateSyntheticDataset(startYear = 2002, startMonth = 9, numMo
       }
     }
 
-    months.push({year, month, mean: weightedSum / weightSum});
+    months.push({year, month, mean: weightedSum / weightSum, source: 'synthetic data'});
     month++;
     if (month > 12) {
       month = 1;

@@ -37,8 +37,21 @@ body {
 }
 
 #date,
-#ppm {
+#ppm,
+#source {
   white-space: nowrap;
+}
+
+/* Data provenance for the month on screen; changes as the animation crosses
+   from one product to the next. */
+#source {
+  position: absolute;
+  top: 166px;
+  left: calc(50% + 200px);
+  font-size: 14px;
+  font-weight: 300;
+  letter-spacing: 0.02em;
+  color: #9a9a9a;
 }
 
 #ppm {

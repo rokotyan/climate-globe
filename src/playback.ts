@@ -13,6 +13,8 @@ export interface PlaybackFrame {
   year: number;
   month: number;
   meanPpm: number;
+  /** Provenance of the month currently on screen */
+  source: string;
 }
 
 export class Playback {
@@ -57,7 +59,8 @@ export class Playback {
       t,
       year: a.year,
       month: a.month,
-      meanPpm: a.mean + (b.mean - a.mean) * t
+      meanPpm: a.mean + (b.mean - a.mean) * t,
+      source: a.source ?? ''
     };
   }
 }

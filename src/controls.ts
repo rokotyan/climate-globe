@@ -44,6 +44,8 @@ export class Controls {
         get: () => globe.radiusBase, set: (v) => { globe.radiusBase = v; reframe(); }},
       {label: 'Lighting', min: 0, max: 1, step: 0.05, decimals: 2,
         get: () => globe.lightMix, set: (v) => (globe.lightMix = v)},
+      {label: 'Grain target (ppm)', min: 0, max: 3, step: 0.05, decimals: 2,
+        get: () => globe.grainTarget, set: (v) => (globe.grainTarget = v)},
       {label: 'Color min (ppm)', min: dataset.vmin - 10, max: dataset.vmax, step: 1, decimals: 0,
         get: () => globe.colorMin,
         set: (v) => {
