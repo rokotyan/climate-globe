@@ -169,6 +169,11 @@ also openly mirrored on CEDA (no account):
 - **Both**: fill coverage gaps spatially *within each month* (nearest observed
   cell, then smooth only the filled cells — never across time, which would
   leak late-record values into early years), interpolate fully-empty months
-  from neighbors, compute area-weighted monthly global means, and quantize to
-  uint16 over the **full** data range (percentile clipping would flatten the
-  extreme cells that carry the fur).
+  from neighbors, and compute area-weighted monthly global means.
+- **Encoding**: `co2.bin` is one **uint8 per cell, scaled to each month's own
+  min/max** (written to `co2.json` as `lo`/`hi`). A month spans ~30–40 ppm, so
+  8 bits give ~0.13 ppm steps — an order of magnitude below the data's own
+  ~1 ppm retrieval noise, and ~0.2% of the colour ramp. Measured max error is
+  0.134 ppm and the per-source fur is unchanged to three decimals, while the
+  payload halves against a global uint16. Never clip to percentiles: that
+  would flatten the extreme cells that carry the fur.

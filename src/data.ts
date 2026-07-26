@@ -26,6 +26,9 @@ export interface MonthInfo {
   source?: string;
   /** Measured cell-to-cell RMS in ppm (this month's own fine texture) */
   fur?: number;
+  /** Dequantization bounds for this month's block (u8 encoding) */
+  lo?: number;
+  hi?: number;
 }
 
 export interface CO2Dataset {
@@ -55,7 +58,9 @@ interface Metadata {
   vmax: number;
   colorMin?: number;
   colorMax?: number;
-  encoding: 'u16';
+  /** 'u8' = one byte per cell, scaled to each month's own lo/hi (current);
+   *  'u16' = two bytes per cell, scaled to the record's vmin/vmax (legacy). */
+  encoding: 'u8' | 'u16';
 }
 
 /** Load the preprocessed dataset (co2.json + co2.bin). Throws on any failure. */
@@ -66,19 +71,32 @@ export async function loadDataset(baseUrl = 'data/'): Promise<CO2Dataset> {
 
   const binResp = await fetch(`${baseUrl}co2.bin`);
   if (!binResp.ok) throw new Error(`co2.bin: HTTP ${binResp.status}`);
-  const raw = new Uint16Array(await binResp.arrayBuffer());
+  const buffer = await binResp.arrayBuffer();
 
-  const expected = meta.months.length * meta.rows * meta.cols;
+  const {vmin, vmax} = meta;
+  const cellsPerMonth = meta.rows * meta.cols;
+  const expected = meta.months.length * cellsPerMonth;
+  const raw = meta.encoding === 'u8' ? new Uint8Array(buffer) : new Uint16Array(buffer);
   if (raw.length !== expected) {
     throw new Error(`co2.bin length ${raw.length}, expected ${expected}`);
   }
 
-  // Dequantize u16 -> ppm
-  const {vmin, vmax} = meta;
   const values = new Float32Array(raw.length);
-  const scale = (vmax - vmin) / 65535;
-  for (let i = 0; i < raw.length; i++) {
-    values[i] = vmin + raw[i] * scale;
+  if (meta.encoding === 'u8') {
+    // Each month is scaled to its own [lo, hi]
+    for (let m = 0; m < meta.months.length; m++) {
+      const {lo = vmin, hi = vmax} = meta.months[m];
+      const scale = (hi - lo) / 255;
+      const start = m * cellsPerMonth;
+      for (let i = start; i < start + cellsPerMonth; i++) {
+        values[i] = lo + raw[i] * scale;
+      }
+    }
+  } else {
+    const scale = (vmax - vmin) / 65535;
+    for (let i = 0; i < raw.length; i++) {
+      values[i] = vmin + raw[i] * scale;
+    }
   }
 
   return {

@@ -432,11 +432,10 @@ def main() -> None:
     weights = np.cos(np.deg2rad(LAT))[:, None]
     means = (grids * weights).sum(axis=(1, 2)) / (weights.sum() * LON.size)
 
-    # Quantize over the FULL data range, not percentiles: clipping the tails
-    # would flatten exactly the extreme cells that give AIRS its visual "fur".
+    # Record range, for reference and as the fallback display domain.
     vmin = float(np.floor(grids.min()))
     vmax = float(np.ceil(grids.max()))
-    print(f"quantization range: {vmin} .. {vmax} ppm (full data range, no clipping)")
+    print(f"record range: {vmin} .. {vmax} ppm")
 
     # Suggested display ramp, spanning the record's monthly means with headroom
     # so neither end saturates and the whole animation stays legible.
@@ -453,7 +452,24 @@ def main() -> None:
         f"(monthly means {means.min():.1f} .. {means.max():.1f})"
     )
 
-    quantized = np.clip((grids - vmin) / (vmax - vmin) * 65535, 0, 65535).round().astype("<u2")
+    # uint8 scaled to each month's OWN range. A month spans ~30-40 ppm, so 8
+    # bits give ~0.13 ppm steps - far below the data's own ~1 ppm retrieval
+    # noise and ~0.2% of the colour ramp, i.e. invisible - while halving the
+    # payload against a global uint16. Per-month rather than global scaling is
+    # what makes 8 bits enough: the record as a whole spans ~106 ppm.
+    lo = grids.min(axis=(1, 2))
+    hi = grids.max(axis=(1, 2))
+    span = np.where(hi > lo, hi - lo, 1.0)
+    quantized = (
+        np.clip((grids - lo[:, None, None]) / span[:, None, None] * 255, 0, 255)
+        .round()
+        .astype(np.uint8)
+    )
+    err = np.abs(lo[:, None, None] + quantized / 255.0 * span[:, None, None] - grids)
+    print(
+        f"encoding: uint8 per month, max error {err.max():.3f} ppm "
+        f"(mean {err.mean():.4f}); month spans {span.min():.1f}..{span.max():.1f} ppm"
+    )
 
     # Per-month cell-to-cell RMS ("fur"): how much fine texture each month
     # actually carries. The old AIRS retrievals run ~1-2 ppm; modern
@@ -476,6 +492,9 @@ def main() -> None:
             "mean": round(float(means[i]), 2),
             "source": sources[i],
             "fur": round(fur[i], 3),
+            # Dequantization bounds for this month's uint8 block
+            "lo": round(float(lo[i]), 3),
+            "hi": round(float(hi[i]), 3),
         }
         for i, (y, mo) in enumerate(month_keys)
     ]
@@ -495,7 +514,7 @@ def main() -> None:
                 "vmax": vmax,
                 "colorMin": color_min,
                 "colorMax": color_max,
-                "encoding": "u16",
+                "encoding": "u8",
             }
         )
     )
