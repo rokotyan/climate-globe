@@ -46,6 +46,12 @@ export class Controls {
         get: () => globe.lightMix, set: (v) => (globe.lightMix = v)},
       {label: 'Grain target (ppm)', min: 0, max: 3, step: 0.05, decimals: 2,
         get: () => globe.grainTarget, set: (v) => (globe.grainTarget = v)},
+      {label: 'Palette (classic → extended)', min: 0, max: 1, step: 0.05, decimals: 2,
+        get: () => globe.paletteMix,
+        set: (v) => {
+          globe.paletteMix = v;
+          hud.setPalette(v);
+        }},
       {label: 'Color min (ppm)', min: dataset.vmin - 10, max: dataset.vmax, step: 1, decimals: 0,
         get: () => globe.colorMin,
         set: (v) => {
@@ -58,6 +64,8 @@ export class Controls {
           globe.colorMax = Math.max(v, globe.colorMin + 1);
           hud.setRange(globe.colorMin, globe.colorMax);
         }},
+      {label: 'Tilt range (°)', min: 0, max: 88, step: 1, decimals: 0,
+        get: () => camera.maxTiltDegrees, set: (v) => (camera.maxTiltDegrees = v)},
       {label: 'Speed (months/sec)', min: 0, max: 30, step: 1, decimals: 0,
         get: () => playback.monthsPerSecond, set: (v) => (playback.monthsPerSecond = v)}
     ];
@@ -99,6 +107,9 @@ export class Controls {
       input.min = String(spec.min);
       input.max = String(spec.max);
       input.step = String(spec.step);
+      // Without this the browser restores the previous position on reload,
+      // which silently disagrees with the values the app actually starts from.
+      input.autocomplete = 'off';
 
       const sync = () => {
         const v = spec.get();

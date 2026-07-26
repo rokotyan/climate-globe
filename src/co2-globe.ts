@@ -50,6 +50,8 @@ export class CO2Globe {
    * 0 disables it and shows every month exactly as measured.
    */
   grainTarget = 0;
+  /** 0 = classic green->red ramp, 1 = extended green->violet ramp. */
+  paletteMix = 1;
 
   constructor(device: Device, private dataset: CO2Dataset) {
     const means = dataset.months.map((m) => m.mean);
@@ -83,7 +85,8 @@ export class CO2Globe {
       uRefMid: this.refMid,
       uTexLimit: this.texLimit,
       uGrainA: 0,
-      uGrainB: 0
+      uGrainB: 0,
+      uPaletteMix: this.paletteMix
     };
 
     this.model = new Model(device, {
@@ -166,6 +169,7 @@ export class CO2Globe {
     u.uTexLimit = this.texLimit;
     u.uGrainA = this.grainFor(monthA);
     u.uGrainB = this.grainFor(monthB);
+    u.uPaletteMix = this.paletteMix;
 
     this.model.draw(renderPass);
   }

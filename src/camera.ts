@@ -7,14 +7,23 @@ import {Matrix4} from '@math.gl/core';
  * feel is framerate-independent.
  */
 
-const REFERENCE_HEIGHT = 768; // original window height; pitch was in pixels from center
-
 export class Camera {
   angle = 0;
   angleDest = 0;
   dist = 600;
   distDest = 750;
-  pitch = 0; // eye.y, world units
+
+  /**
+   * Vertical orbit angle in radians, eased like the others. The original
+   * offset the eye vertically by a pixel count (eye.y = mouseY - height/2),
+   * which at typical distances capped the view at roughly 22 degrees above or
+   * below the equator. Orbiting by angle instead lets the pointer carry the
+   * camera right over the poles.
+   */
+  tilt = 0;
+  tiltDest = 0;
+  /** Limit of the vertical orbit; stays short of 90 deg so `up` never degenerates. */
+  maxTiltDegrees = 80;
 
   readonly center: [number, number, number] = [0, 0, 0];
   eye: [number, number, number] = [0, 0, 600];
@@ -37,18 +46,29 @@ export class Camera {
     const ease = 1 - Math.pow(0.9, frames);
     this.angle += (this.angleDest - this.angle) * ease;
     this.dist += (this.distDest - this.dist) * ease;
+    this.tilt += (this.tiltDest - this.tilt) * ease;
 
-    this.eye = [Math.sin(this.angle) * this.dist, this.pitch, Math.cos(this.angle) * this.dist];
+    // True spherical orbit: the distance to the globe stays constant as the
+    // camera rises, so it keeps its framing all the way to the pole.
+    const horizontal = Math.cos(this.tilt) * this.dist;
+    this.eye = [
+      Math.sin(this.angle) * horizontal,
+      Math.sin(this.tilt) * this.dist,
+      Math.cos(this.angle) * horizontal
+    ];
     this.view.lookAt({eye: this.eye, center: this.center, up: [0, 1, 0]});
   }
 
   /**
    * Pointer position drives the camera (no drag), like the original mouseMove:
-   * horizontal motion nudges the orbit angle, vertical position sets pitch.
+   * horizontal motion nudges the orbit angle, vertical position sets the tilt.
+   * Pointer at the bottom of the window looks down on the globe, at the top
+   * looks up at it - the same sense as the original.
    */
   onPointerMove(y: number, dx: number, height: number): void {
     this.angleDest += -dx * 0.025;
-    this.pitch = (y - height / 2) * (REFERENCE_HEIGHT / height);
+    const fraction = Math.max(-1, Math.min(1, (y - height / 2) / (height / 2)));
+    this.tiltDest = fraction * ((this.maxTiltDegrees * Math.PI) / 180);
   }
 
   adjustDist(delta: number): void {

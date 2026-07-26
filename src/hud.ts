@@ -16,11 +16,19 @@ export class Hud {
   private colorMin: number;
   private colorMax: number;
 
+  private paletteMix = 1;
+
   constructor(dataset: CO2Dataset) {
     this.colorMin = dataset.colorMin;
     this.colorMax = dataset.colorMax;
     this.drawColorbar();
     this.setRange(dataset.colorMin, dataset.colorMax);
+  }
+
+  /** Keep the colorbar and readout tint on the same ramp as the globe. */
+  setPalette(paletteMix: number): void {
+    this.paletteMix = paletteMix;
+    this.drawColorbar();
   }
 
   /** Keep the colorbar labels and readout tint in sync with the globe ramp. */
@@ -41,7 +49,7 @@ export class Hud {
     this.dateEl.textContent = `${frame.year} ${String(frame.month).padStart(2, '0')}`;
     const norm = normalizePpm(frame.meanPpm, this.colorMin, this.colorMax);
     this.ppmEl.textContent = `${frame.meanPpm.toFixed(1)} ppm`;
-    this.ppmEl.style.color = normToCss(norm);
+    this.ppmEl.style.color = normToCss(norm, this.paletteMix);
     const source = frame.source + this.grainNote;
     if (this.sourceEl.textContent !== source) {
       this.sourceEl.textContent = source;
@@ -53,7 +61,7 @@ export class Hud {
     const ctx = canvas.getContext('2d')!;
     const {width, height} = canvas;
     for (let x = 0; x < width; x++) {
-      ctx.fillStyle = normToCss(x / (width - 1));
+      ctx.fillStyle = normToCss(x / (width - 1), this.paletteMix);
       ctx.fillRect(x, 0, 1, height);
     }
   }
