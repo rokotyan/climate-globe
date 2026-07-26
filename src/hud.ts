@@ -8,6 +8,19 @@ function monthName(m: MonthInfo): string {
   return `${MONTH_NAMES[m.month - 1]} ${m.year}`;
 }
 
+/** Contiguous run of months from one product, for the provenance line. */
+function sourceSpans(dataset: CO2Dataset): Array<{label: string; from: number; to: number}> {
+  const spans: Array<{label: string; from: number; to: number}> = [];
+  for (const m of dataset.months) {
+    const label = m.source;
+    if (!label) continue;
+    const last = spans[spans.length - 1];
+    if (last && last.label === label) last.to = m.year;
+    else spans.push({label, from: m.year, to: m.year});
+  }
+  return spans;
+}
+
 /**
  * If the record hands over to a product with markedly less per-cell texture,
  * say so and when - otherwise the surface simply appears to go smooth for no
@@ -83,6 +96,15 @@ export class Hud {
       `<div>+${delta.toFixed(1)} ppm since ${monthName(first)} · +${percent.toFixed(1)}%` +
         ` · ${perYear.toFixed(2)}%/yr (${(delta / years).toFixed(1)} ppm/yr)</div>`
     ];
+
+    const spans = sourceSpans(dataset);
+    if (spans.length > 1) {
+      lines.push(
+        `<div class="info-sources">${spans
+          .map((s) => `${s.label} <span>${s.from}–${String(s.to).slice(2)}</span>`)
+          .join(' · ')}</div>`
+      );
+    }
 
     const note = granularityNote(dataset);
     if (note) lines.push(`<div class="info-note">${note}</div>`);
