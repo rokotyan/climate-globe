@@ -45,12 +45,24 @@ body {
   text-shadow: 0 0 8px rgba(0, 0, 0, 0.8);
 }
 
-/* --- Date / ppm / provenance ------------------------------------------- */
+/* --- Top row: summary left, readout right ------------------------------- */
 
-#readout {
+/* One flex row rather than two independently positioned corners: the summary
+   then keeps its place at the top left on any screen and simply wraps into a
+   narrower column, instead of needing a reserved gap it can still overrun. */
+#hud-top {
   position: absolute;
   top: var(--edge-top);
+  left: var(--edge);
   right: var(--edge);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: clamp(10px, 3vw, 48px);
+}
+
+#readout {
+  flex: 0 0 auto;
   text-align: right;
   line-height: 1.15;
 }
@@ -75,12 +87,11 @@ body {
 /* --- Standing summary of the record ------------------------------------- */
 
 #info {
-  position: absolute;
-  left: var(--edge);
-  top: var(--edge-top);
-  /* A reading measure rather than a share of the viewport: on wide screens a
-     percentage would run under the date/ppm readout in the opposite corner. */
-  max-width: min(52ch, calc(100vw - 2 * var(--edge)));
+  /* Takes the space the readout leaves; min-width:0 lets it shrink and wrap
+     rather than pushing the readout off the screen. */
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 52ch;
   font-size: var(--caption);
   font-weight: 300;
   line-height: 1.55;
@@ -291,16 +302,8 @@ body.ready #loading {
   }
 
   #source {
-    max-width: 55vw;
+    max-width: 40vw;
     white-space: normal;
-  }
-
-  /* Plenty of vertical room on a phone, so the summary gets the full width
-     rather than a narrow column beside the globe - which means it has to clear
-     the date/ppm readout above it instead of sharing that band. */
-  #info {
-    top: calc(var(--edge-top) + 96px);
-    max-width: calc(100vw - 2 * var(--edge));
   }
 }
 
