@@ -1,102 +1,141 @@
-# AIRS CO₂ — WebGL2 port
+# AIRS CO₂
 
-Web port (luma.gl v9 / WebGL2, TypeScript, Vite) of the 2014 Cinder piece in
-this repo: monthly global CO₂ concentration rendered as a displaced,
-green→red globe, animating through the satellite record with an
-auto-rotating orbit camera.
+Twenty-three years of atmospheric CO₂, as a globe that swells and reddens.
 
-## Run
+Every cell of a 76 × 144 latitude/longitude grid is pushed out from the centre
+in proportion to the CO₂ measured above it and coloured green through red, so a
+month reads at once as a shape and as a temperature. Play it and the planet
+grows: **+57 ppm since 2002, +15%**.
 
-```sh
-npm install
-npm run dev        # http://localhost:5199
-```
+![The globe in November 2025 — deep red, at its largest](docs/hero.png)
 
-The shipped data is **AIRS CO₂, Sept 2002 – Feb 2026** (280 months), spliced
-from three retrievals of the same instrument, each bias-corrected against the
-previous over their overlap:
+**[▶ Open the live version](https://rokotyan.github.io/airs-co2/)**
 
-| Months | Product | Fur (cell-to-cell) |
-|---|---|---|
-| 2002-09 – 2012-02 | AIRX3C2M (AMSU-coupled) — the original's own source | 1.19 ppm |
-| 2012-03 – 2017-02 | AIRS3C2M (IR-only) | 1.65 ppm |
-| 2017-03 – 2026-02 | CLIMCAPS L3 (1°, modern algorithm) | 0.39 ppm |
+## Two frames, twenty-two years apart
 
-Global mean rises 371.6 → 421.4 ppm. The header names the product for the
-month on screen. All three are sampled at native resolution (nearest
-neighbour, never averaged) so their per-cell retrieval noise — the fine "fur"
-of the artwork — is preserved.
+| April 2003 — 375 ppm | November 2025 — 421 ppm |
+| --- | --- |
+| ![](docs/early.png) | ![](docs/hero.png) |
 
-Note the fur column: modern quality-screened retrievals deliberately suppress
-the per-cell scatter that gives the early years their texture, so the post-2017
-months are intrinsically smoother. The **Grain target** slider compensates,
-topping each month up to a common texture level (adding least where the data
-already has its own); the header then reads "… + grain" so synthetic texture is
-never passed off as measured.
+The globe is smaller and green early on and larger and red at the end because
+both radius and colour follow the same value. The change in *surface texture*
+is a different story — see [Why the texture fades](#why-the-texture-fades).
 
-To regenerate or swap datasets see [tools/README.md](tools/README.md). Without
-`public/data/*`, the app falls back to a synthetic dataset.
+## Origins
 
-URL params: `?synthetic` forces synthetic data, `?start=<n>` starts playback
-at month index *n*.
+This is a WebGL2 port of a Cinder/C++ piece from 2014, itself built on Robert
+Hodgin's Cinder *Earthquake* sample. The port keeps the original's geometry and
+feel exactly — the same grid and sphere mapping, the same
+`radius = 200 + 5·(ppm − 375)` displacement, the same green→red HSV ramp, the
+same auto-orbiting camera that follows the pointer without dragging, and the
+same unlit shading (the original never enabled `GL_LIGHTING`; its smoothness
+comes from Gouraud colour interpolation, not light).
+
+What changed is where the work happens. The original re-interpolated the whole
+grid and recomputed every normal on the CPU each frame. Here all 280 months
+live in a single R32F texture atlas and the vertex shader interpolates between
+two month slices, computing displacement and colour on the GPU — so a frame
+costs one draw call and a handful of uniforms.
 
 ## Controls
 
-Mouse keeps the original's passive feel — the camera follows the pointer with
-no dragging:
+Mouse keeps the original's passive feel — the camera follows the pointer, no
+dragging:
 
-- **pointer** — vertical position tilts the camera (to 80°), horizontal motion nudges the orbit
-- **wheel / ↑ ↓** — zoom
-- **click** — advance one month
-- **p** — pause/resume playback (camera keeps orbiting)
-- **f** — fullscreen (Esc exits)
-- **h** — show/hide the parameter panel (hidden by default)
-- **l** — toggle faceted lighting
+| | |
+| --- | --- |
+| **pointer** | vertical position tilts the camera (to 80°), horizontal motion nudges the orbit |
+| **wheel / ↑ ↓** | zoom |
+| **click** | advance one month |
+| **p** | pause / resume (the camera keeps orbiting) |
+| **f** | fullscreen |
+| **l** | faceted lighting on/off |
+| **h** | show the parameter panel |
 
 Touch has no hover, so it gets the conventional mapping: **drag** to orbit,
-**pinch** to zoom, **tap** to advance a month. The parameter panel is
-keyboard-only (`h`), so it is not reachable on a phone — it is an authoring
-tool, not part of the piece.
+**pinch** to zoom, **tap** to advance a month.
 
-## Layout
+`h` opens an authoring panel for displacement, texture limit, base radius,
+lighting, grain, the colour ramp, tilt range and playback speed. It is a tool
+for tuning the look, not part of the piece, so it starts hidden.
 
-Type and spacing scale with the viewport (`clamp`/`vmin`) and the HUD anchors
-to the viewport edges, honouring notch insets, so the piece holds up from a
-375 px phone to a large display. The summary sits top-left, the date/ppm/source
-readout top-right, the colorbar bottom-centre; on narrow screens the summary
-drops below the readout rather than colliding with it.
+## The data
 
-## Parameter panel
+280 months, September 2002 – February 2026, all of it from the **same
+instrument**: AIRS aboard NASA's *Aqua*. Three products cover the span, each
+bias-corrected against the previous one over their overlap:
 
-A live tweak panel (top-left, collapsible, `h` to hide) exposes the look
-parameters so you can dial the aesthetic without editing code:
+| Months | Product | Retrieval | Grid | Texture |
+| --- | --- | --- | --- | --- |
+| 2002-09 – 2012-02 | [AIRX3C2M v5](https://disc.gsfc.nasa.gov/datasets/AIRX3C2M_005/summary) | AIRS **+ AMSU-A** | 2° × 2.5° | 1.19 ppm |
+| 2012-03 – 2017-02 | [AIRS3C2M v5](https://disc.gsfc.nasa.gov/datasets/AIRS3C2M_005/summary) | AIRS alone (IR-only) | 2° × 2.5° | 1.65 ppm |
+| 2017-03 – 2026-02 | [SNDRAQIL3SMCCP v2](https://disc.gsfc.nasa.gov/datasets/SNDRAQIL3SMCCP_2/summary) | AIRS alone, CLIMCAPS | 1° × 1° | 0.39 ppm |
 
-- **Displacement (units/ppm)** — relief amplitude (original used 5)
-- **Texture limit (ppm)** — soft cap on a cell's deviation from the monthly
-  mean; low = smooth, high = dramatic spikes
-- **Base radius** — globe size at the record's midpoint ppm
-- **Lighting** — 0 = unlit smooth vertex colors (faithful to the original),
-  1 = faceted relief shading
-- **Grain target (ppm)** — common cell-to-cell texture level. Each month is
-  topped up only by what it lacks, so the noisy early AIRS years are barely
-  touched while the smooth modern ones gain the missing fur. 0 = every month
-  exactly as measured
-- **Color min / max (ppm)** — the green→red ramp domain (also relabels the
-  colorbar and re-tints the readout)
-- **Speed (months/sec)** — playback rate (original ~10)
+Aqua's microwave sounder degraded, so the AMSU-coupled product stops in 2012
+and the record continues IR-only; CLIMCAPS is the modern reprocessing that
+carries it to within a few months of today. Measured offsets across the
+overlaps are small — −0.20 ppm over 26 months at the first join, −1.04 ppm over
+39 months at the second — and both are removed, so the animation has no step
+where products change. The header names the product for whichever month is on
+screen.
 
-Reset restores the defaults. These are authoring controls; the defaults in
-`src/co2-globe.ts` / `src/playback.ts` are what ship.
+Critically, every product is sampled onto the app grid at its **native
+resolution** — nearest neighbour, never averaged. The AIRS L3 grid's first 76
+rows and 144 columns *are* the original app's grid, so the early years map one
+to one with no interpolation at all.
 
-## How it differs from the C++ original
+### Why the texture fades
 
-- All months live in one R32F texture atlas; the vertex shader interpolates
-  between month slices and computes displacement + color, so nothing is
-  rebuilt on the CPU per frame (the original re-lerped the grid and
-  recomputed normals every frame).
-- The ppm→radius and ppm→hue mappings are parameterized by the dataset's
-  vmin/vmax (the record now spans ~372–428 ppm, vs ~370–395 in 2012).
-- The HUD colorbar is drawn from the same ramp used by the shader instead of
-  the old `colorbar.png`.
-- Earth textures, star field, and earthquake features (already disabled in
-  the C++ code) were not ported.
+The fine fur on the early globes is **per-cell retrieval noise** — each cell
+was an independent, slightly noisy measurement, and that jitter is the texture.
+Modern processing deliberately removes it: cell-to-cell variation falls from
+1.19 ppm (AIRX3C2M) to 0.39 ppm (CLIMCAPS). Better data, less texture.
+
+Nothing recovers it, because there is nothing to recover — so the panel offers
+a **Grain** control instead, which tops each month up to a common texture level
+using only what it lacks. It defaults to off, and whenever it is active the
+header appends "+ grain", so synthetic texture is never presented as
+measurement.
+
+## Running it
+
+Node 18 or newer.
+
+```sh
+npm install
+npm run dev      # http://localhost:5199
+npm run build    # typechecks, then builds to dist/
+```
+
+URL parameters: `?start=<n>` opens at month *n*, `?synthetic` uses the built-in
+generated dataset instead of the real record.
+
+## Regenerating the data
+
+`public/data/co2.bin` (3.1 MB) and `co2.json` ship with the repo, so nothing is
+needed to run it. To rebuild them from source granules — or to swap in a
+different record — see [tools/README.md](tools/README.md). The pipeline handles
+AIRS HDF-EOS2 granules natively and gridded netCDF (CarbonTracker, C3S) by
+regridding.
+
+`co2.bin` is one `uint8` per cell scaled to each month's own range, which is
+about 0.13 ppm per step — an order of magnitude below the data's own noise, and
+half the size of a global `uint16`. The whole deployed site is **2.2 MB** over
+the wire, of which the app itself is 82 kB.
+
+## Deployment
+
+Pushing to `main` builds and publishes to GitHub Pages via
+[`.github/workflows/deploy.yml`](.github/workflows/deploy.yml). Set
+*Settings → Pages → Source* to **GitHub Actions** once, and Vite's relative
+`base` handles the project subpath.
+
+## Credits
+
+Original Cinder piece and this port by [Nikita
+Rokotyan](https://github.com/rokotyan), after Robert Hodgin's Cinder
+*Earthquake* sample. Rendering with [luma.gl](https://luma.gl).
+
+CO₂ data courtesy of NASA's Goddard Earth Sciences Data and Information
+Services Center (GES DISC) and the AIRS project at JPL; CLIMCAPS products from
+the Sounder SIPS. Please cite the datasets linked above if you reuse the data.
