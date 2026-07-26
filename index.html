@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AIRS CO2</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <canvas id="canvas"></canvas>
+    <div id="hud">
+      <div id="date"></div>
+      <div id="ppm"></div>
+      <canvas id="colorbar" width="400" height="14"></canvas>
+      <div id="colorbar-labels"><span id="vmin-label"></span><span id="vmax-label"></span></div>
+    </div>
+    <div id="controls"></div>
+    <div id="loading">loading co2 data&hellip;</div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

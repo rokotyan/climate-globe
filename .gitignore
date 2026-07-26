@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Python environment for the data pipeline
+tools/.venv/
+__pycache__/
+*.py[cod]
+
+# Data pipeline downloads and intermediates.
+# The generated public/data/co2.{bin,json} ARE committed so the piece runs
+# out of the box; the multi-GB source granules are not. See tools/README.md
+# to regenerate them.
+tools/airs_hdf/
+tools/ct_monthly/
+tools/cds_data/
+tools/*.hdf
+tools/*.nc
+tools/*.nc4
+tools/*.zip
+tools/airs_urls.txt
+
+# Credentials — never commit Earthdata / Copernicus CDS tokens
+.edl_token
+.cdsapirc
+.netrc
+*.token
+
+# Editor / OS cruft
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Logs
+*.log
+npm-debug.log*
+yarn-error.log*

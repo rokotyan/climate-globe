@@ -1,0 +1,21 @@
+{
+  "name": "airsco2-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@luma.gl/core": "^9.1.9",
+    "@luma.gl/engine": "^9.1.9",
+    "@luma.gl/webgl": "^9.1.9",
+    "@math.gl/core": "^4.1.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4",
+    "vite": "^5.4.11"
+  }
+}
