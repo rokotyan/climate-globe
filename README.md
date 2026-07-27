@@ -1,11 +1,13 @@
-# AIRS CO₂
+# Climate Globe
 
-Twenty-three years of atmospheric CO₂, as a globe that swells and reddens.
+Twenty-three years of the atmosphere as a globe that swells and reddens: CO₂,
+methane, carbon monoxide and near-surface temperature, month by month, all from
+the same satellite.
 
 Every cell of a 76 × 144 latitude/longitude grid is pushed out from the centre
-in proportion to the CO₂ measured above it and coloured green through red, so a
-month reads at once as a shape and as a temperature. Play it and the planet
-grows: **+57 ppm since 2002, +15%**.
+in proportion to the value measured above it and coloured green through red, so
+a month reads at once as a shape and as a temperature. Play the CO₂ layer and
+the planet grows: **+57 ppm since 2002, +15%**.
 
 ![The globe in April 2015 — 400 ppm, its surface furred with per-cell retrieval noise](docs/cover.png)
 
