@@ -49,8 +49,8 @@ vec3 classicRamp(float t) {
 vec3 extendedRamp(float t) {
   const int N = 7;
   vec3 c[7] = vec3[7](
-    vec3(0.098, 0.455, 0.208), // deep green
-    vec3(0.180, 0.608, 0.235), // green
+    vec3(0.204, 0.643, 0.302), // green
+    vec3(0.353, 0.769, 0.278), // bright green
     vec3(0.659, 0.847, 0.169), // yellow-green
     vec3(0.949, 0.882, 0.173), // yellow
     vec3(0.961, 0.580, 0.094), // orange
