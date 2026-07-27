@@ -12,6 +12,13 @@ export class LayerSwitch {
   private busy = false;
   /** Seconds per layer when cycling unattended; 0 is off. See ?cycle. */
   cycleSeconds = 0;
+  /**
+   * Full passes left to make, Infinity for endless. Counted down on arriving
+   * back at the first layer rather than by tallying steps, which makes it
+   * self-correcting: however the viewer interferes with the arrows in between,
+   * cycling always comes to rest on the layer it started from.
+   */
+  cyclesLeft = Number.POSITIVE_INFINITY;
   private elapsed = 0;
 
   constructor(root: HTMLElement, private onSelect: (id: LayerId) => Promise<void>) {
@@ -50,12 +57,13 @@ export class LayerSwitch {
     if (layer) void this.select(layer.id);
   }
 
-  /** Relative move, wrapping - the arrow keys. */
+  /**
+   * Relative move, wrapping - the arrow keys. Does not spend a pass: a viewer
+   * driving by hand should not shorten an unattended run.
+   */
   step(delta: number): void {
-    const at = LAYERS.findIndex((l) => l.id === this.current);
-    const next = (at + delta + LAYERS.length) % LAYERS.length;
     this.elapsed = 0; // a deliberate switch gets a full dwell before the cycle moves on
-    this.selectByIndex(next);
+    this.move(delta);
   }
 
   /**
@@ -66,9 +74,24 @@ export class LayerSwitch {
   tick(dt: number): void {
     if (this.cycleSeconds <= 0) return;
     this.elapsed += dt;
-    if (this.elapsed < this.cycleSeconds) return;
+    // Hold rather than drop a step if a layer is still loading.
+    if (this.elapsed < this.cycleSeconds || this.busy) return;
     this.elapsed = 0;
-    this.step(1);
+
+    const landedOnFirst = this.move(1) === 0;
+    if (landedOnFirst && Number.isFinite(this.cyclesLeft)) {
+      this.cyclesLeft -= 1;
+      // Out of passes: stop here, which is the layer it opened on.
+      if (this.cyclesLeft <= 0) this.cycleSeconds = 0;
+    }
+  }
+
+  /** Steps by delta and returns the index it landed on. */
+  private move(delta: number): number {
+    const at = LAYERS.findIndex((l) => l.id === this.current);
+    const next = (at + delta + LAYERS.length) % LAYERS.length;
+    this.selectByIndex(next);
+    return next;
   }
 
   private mark(): void {

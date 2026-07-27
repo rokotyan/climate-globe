@@ -51,14 +51,21 @@ async function main(): Promise<void> {
   });
 
   /**
-   * `?cycle` walks the layers unattended, a second each by default (`?cycle=4`
-   * for four). Every layer is fetched up front in that mode: they are lazy
-   * normally, and a 3 MB fetch does not finish inside a one-second dwell, so
-   * the first pass round would otherwise stall on each in turn.
+   * `?cycle` walks the layers unattended. Its number is how many full passes to
+   * make - `?cycle=1` shows each layer once and comes to rest on CO2 - and bare
+   * `?cycle` runs endlessly, for a display left up. `?dwell=<seconds>` sets how
+   * long each layer holds, one second by default.
+   *
+   * Every layer is fetched up front in this mode: they are lazy normally, and a
+   * 3 MB fetch does not finish inside a one-second dwell, so the first pass
+   * round would otherwise stall on each in turn.
    */
   if (params.has('cycle')) {
-    const seconds = Number(params.get('cycle'));
-    layerSwitch.cycleSeconds = Number.isFinite(seconds) && seconds > 0 ? seconds : 1;
+    const passes = Number(params.get('cycle'));
+    layerSwitch.cyclesLeft =
+      Number.isFinite(passes) && passes > 0 ? passes : Number.POSITIVE_INFINITY;
+    const dwell = Number(params.get('dwell'));
+    layerSwitch.cycleSeconds = Number.isFinite(dwell) && dwell > 0 ? dwell : 1;
     await Promise.all(
       LAYERS.filter((l) => !loaded.has(l.id)).map(async (l) => {
         try {

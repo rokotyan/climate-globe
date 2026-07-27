@@ -228,11 +228,22 @@ npm run dev      # http://localhost:5199
 npm run build    # typechecks, then builds to dist/
 ```
 
-URL parameters: `?start=<n>` opens at month *n*, `?cycle` walks the layers
-unattended a second each (`?cycle=4` for four seconds), and `?synthetic` uses
-the built-in generated dataset instead of the real record.
+URL parameters:
 
-`?cycle` fetches every layer before it starts, since they are lazy otherwise and
+| | |
+| --- | --- |
+| `?start=<n>` | open at month *n* |
+| `?cycle=<n>` | walk the layers *n* full passes, then settle back on CO₂ |
+| `?cycle` | walk them endlessly, for a display left up |
+| `?dwell=<s>` | seconds each layer holds, default 1 |
+| `?synthetic` | use the built-in generated dataset instead of the real record |
+
+So `?cycle=1` shows each of the four once and stops on CO₂; `?cycle=3&dwell=2`
+makes three slower passes. Passes are counted by arriving back at the first
+layer rather than by tallying steps, so using the arrows part-way through
+neither shortens the run nor leaves it resting somewhere arbitrary.
+
+Cycling fetches every layer before it starts, since they are lazy otherwise and
 a 3 MB download does not finish inside a one-second dwell.
 
 ## Regenerating the data
