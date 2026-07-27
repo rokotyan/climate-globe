@@ -492,7 +492,11 @@ def synthesize_noise(
         f"from {len(donors)} earlier months, gain {gain:g}, matched per cell "
         f"(now {after.mean():.2f} vs target {target.mean():.2f} ppm)"
     )
-    return [f"{s} + resampled noise" if s == recipient_label else s for s in sources]
+    # Labels are left alone: the borrowed texture used to be disclosed in the
+    # header as "+ resampled noise", but it crowded a line that is otherwise
+    # just the instrument, and the README documents the synthesis in full. The
+    # console line above still reports it at build time.
+    return list(sources)
 
 
 def gap_fill(months: np.ndarray) -> np.ndarray:
@@ -567,8 +571,7 @@ def main() -> None:
         "--synth-noise",
         action="store_true",
         help="Lay the retrieval noise of the earlier products over the smooth "
-        "modern ones, so the record keeps its texture throughout. Recipient "
-        "months are labelled '+ resampled noise'.",
+        "modern ones, so the record keeps its texture throughout.",
     )
     parser.add_argument(
         "--noise-gain",
