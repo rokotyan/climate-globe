@@ -22,7 +22,7 @@ fading out again as they cross the limb. On a phone-sized globe twenty names
 would collide, so ten of them — spread through longitude, so every face carries
 a few — keep their name and the rest keep just their dot.
 
-**[▶ Open the live version](https://rokotyan.github.io/airs-co2/)**
+**[▶ Open the live version](https://rokotyan.github.io/climate-globe/)**
 
 ## Two frames, twenty-two years apart
 
