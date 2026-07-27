@@ -321,6 +321,69 @@ def regrid_month(field: xr.DataArray) -> np.ndarray:
     return out.values.astype(np.float64)
 
 
+def synthesize_noise(
+    grids: np.ndarray, sources: list[str], month_keys: list[tuple[int, int]]
+) -> list[str]:
+    """
+    Give the smooth modern months the retrieval noise of the earlier ones.
+
+    The fine texture of the early globes is per-cell retrieval scatter, which
+    modern quality screening removes - so the record visibly goes slack after
+    2017. Rather than inventing white noise, this lifts the actual residual
+    field from an earlier month and lays it over a later one:
+
+      residual = month - 3x3 smoothed month
+
+    Donors are matched by calendar month, so the seasonal pattern of where
+    AIRS was noisy (polar night, cloud) lands where it belongs. The residual
+    is rescaled per latitude band to make up exactly the shortfall between the
+    recipient's own scatter and the donor era's, added in quadrature since the
+    two are independent.
+
+    Returns updated source labels - recipients are marked, because after this
+    their fine texture is borrowed rather than measured.
+    """
+    from scipy import ndimage
+
+    def residual(g: np.ndarray) -> np.ndarray:
+        return g - ndimage.uniform_filter(g, size=3, mode="nearest")
+
+    def band_rms(r: np.ndarray) -> np.ndarray:
+        return np.sqrt((r**2).mean(axis=1))  # per latitude row
+
+    # The last source is the smooth one; everything before it donates.
+    order = list(dict.fromkeys(sources))
+    if len(order) < 2:
+        print("noise: single source, nothing to do")
+        return sources
+    recipient_label = order[-1]
+    donors = [i for i, s in enumerate(sources) if s != recipient_label]
+    recipients = [i for i, s in enumerate(sources) if s == recipient_label]
+
+    target = np.mean([band_rms(residual(grids[i])) for i in donors], axis=0)
+
+    # Donors indexed by calendar month, so a January is dressed with Januaries
+    by_month: dict[int, list[int]] = {}
+    for i in donors:
+        by_month.setdefault(month_keys[i][1], []).append(i)
+
+    for n, i in enumerate(recipients):
+        pool = by_month.get(month_keys[i][1]) or donors
+        donor = pool[n % len(pool)]
+        d = residual(grids[donor])
+        own = band_rms(residual(grids[i]))
+        need = np.sqrt(np.maximum(0.0, target**2 - own**2))
+        scale = np.divide(need, band_rms(d), out=np.zeros_like(need), where=band_rms(d) > 1e-9)
+        grids[i] += d * scale[:, None]
+
+    before = np.mean([band_rms(residual(grids[i])).mean() for i in recipients])
+    print(
+        f"noise: {len(recipients)} months of '{recipient_label}' dressed with residuals "
+        f"from {len(donors)} earlier months (now {before:.2f} vs target {target.mean():.2f} ppm)"
+    )
+    return [f"{s} + resampled noise" if s == recipient_label else s for s in sources]
+
+
 def gap_fill(months: np.ndarray) -> np.ndarray:
     """months: (n, 76, 144) with NaNs. Fill with lat-band mean, then temporal fill."""
     filled = months.copy()
@@ -389,6 +452,13 @@ def main() -> None:
         action="store_true",
         help="Splice --extend data as-is instead of removing its offset",
     )
+    parser.add_argument(
+        "--synth-noise",
+        action="store_true",
+        help="Lay the retrieval noise of the earlier products over the smooth "
+        "modern ones, so the record keeps its texture throughout. Recipient "
+        "months are labelled '+ resampled noise'.",
+    )
     parser.add_argument("-o", "--outdir", type=Path, default=Path(__file__).parent / "../public/data")
     args = parser.parse_args()
 
@@ -427,6 +497,9 @@ def main() -> None:
     missing = int(np.isnan(grids).sum())
     print(f"missing cells: {missing} of {grids.size} ({100 * missing / grids.size:.1f}%)")
     grids = gap_fill(grids)
+
+    if args.synth_noise:
+        sources = synthesize_noise(grids, sources, month_keys)
 
     # Area-weighted global means
     weights = np.cos(np.deg2rad(LAT))[:, None]

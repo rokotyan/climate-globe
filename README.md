@@ -78,7 +78,10 @@ bias-corrected against the previous one over their overlap:
 | --- | --- | --- | --- | --- |
 | 2002-09 – 2012-02 | [AIRX3C2M v5](https://disc.gsfc.nasa.gov/datasets/AIRX3C2M_005/summary) | AIRS **+ AMSU-A** | 2° × 2.5° | 1.19 ppm |
 | 2012-03 – 2017-02 | [AIRS3C2M v5](https://disc.gsfc.nasa.gov/datasets/AIRS3C2M_005/summary) | AIRS alone (IR-only) | 2° × 2.5° | 1.65 ppm |
-| 2017-03 – 2026-02 | [SNDRAQIL3SMCCP v2](https://disc.gsfc.nasa.gov/datasets/SNDRAQIL3SMCCP_2/summary) | AIRS alone, CLIMCAPS | 1° × 1° | 0.39 ppm |
+| 2017-03 – 2026-02 | [SNDRAQIL3SMCCP v2](https://disc.gsfc.nasa.gov/datasets/SNDRAQIL3SMCCP_2/summary) | AIRS alone, CLIMCAPS | 1° × 1° | 0.39 ppm¹ |
+
+¹ Shown with the earlier years' noise resampled onto it — see
+[Why the texture fades](#why-the-texture-fades).
 
 Aqua's microwave sounder degraded, so the AMSU-coupled product stops in 2012
 and the record continues IR-only; CLIMCAPS is the modern reprocessing that
@@ -99,8 +102,18 @@ The fine fur on the cover image is **per-cell retrieval noise** — each cell wa
 an independent, slightly noisy measurement, and that jitter is the texture.
 Modern processing deliberately removes it: cell-to-cell variation falls from
 1.19 ppm (AIRX3C2M) through 1.65 (AIRS3C2M) to 0.39 ppm (CLIMCAPS). Better
-data, less texture. Nothing recovers it, because there is nothing left to
-recover — so the later years are shown exactly as measured, smooth.
+data, less texture — and a record that visibly goes slack halfway through.
+
+So the CLIMCAPS months **borrow the earlier noise**. Rather than inventing a
+random field, `--synth-noise` lifts the actual residual (`month − 3×3 smoothed
+month`) from a real AIRS month, matched by calendar month so the seasonal
+pattern of where the instrument was noisy lands where it belongs, and rescales
+it per latitude band to make up exactly the shortfall. Recipient months carry
+**+ resampled noise** in their label, in the header and in the source list
+above, so borrowed texture is never mistaken for measurement.
+
+The underlying values are untouched — only the fine grain is added. Omit the
+flag to see the record exactly as measured.
 
 ## Running it
 
