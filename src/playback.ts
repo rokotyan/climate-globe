@@ -19,16 +19,29 @@ export interface PlaybackFrame {
 
 export class Playback {
   playing = true;
-  /** Playback rate; the original app ran at ~10 months/sec. */
-  monthsPerSecond = 10;
+  /**
+   * Playback rate. The original ran at ~10 months/sec with a slow, unrelated
+   * spin; now that a year of data is a turn of the globe, that rate would spin
+   * it every 1.2 seconds. 4 months/sec gives a 3 second turn and takes about
+   * 70 seconds over the whole record.
+   */
+  monthsPerSecond = 4;
   private cursor = 0; // fractional month index
+  /** Months played since load, never wrapped - drives the camera's orbit. */
+  private played = 0;
 
   constructor(private dataset: CO2Dataset) {}
+
+  get playedMonths(): number {
+    return this.played;
+  }
 
   update(dt: number): void {
     if (!this.playing) return;
     const n = this.dataset.months.length;
-    this.cursor = (this.cursor + dt * this.monthsPerSecond) % (n - 1);
+    const advance = dt * this.monthsPerSecond;
+    this.cursor = (this.cursor + advance) % (n - 1);
+    this.played += advance;
   }
 
   togglePlay(): void {
@@ -43,7 +56,10 @@ export class Playback {
   /** Advance exactly one month (original mouseDown behavior). */
   step(): void {
     const n = this.dataset.months.length;
+    const before = this.cursor;
     this.cursor = (Math.floor(this.cursor) + 1) % (n - 1);
+    // Carry the orbit along, so stepping turns the globe a month's worth too
+    this.played += 1 - (before - Math.floor(before));
   }
 
   frame(): PlaybackFrame {

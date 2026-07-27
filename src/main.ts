@@ -40,8 +40,9 @@ async function main(): Promise<void> {
       const dt = lastTime === null ? 1 / 60 : Math.min((time - lastTime) / 1000, 0.1);
       lastTime = time;
 
-      camera.update(dt);
       playback.update(dt);
+      camera.setOrbit(playback.playedMonths);
+      camera.update(dt);
       const frame = playback.frame();
 
       const renderPass = device.beginRenderPass({clearColor: [0, 0, 0, 1], clearDepth: 1});

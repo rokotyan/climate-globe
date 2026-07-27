@@ -8,6 +8,14 @@ import {Matrix4} from '@math.gl/core';
  */
 
 export class Camera {
+  /**
+   * Orbit angle driven by playback - see `setOrbit`. The original spun at a
+   * fixed rate unrelated to the data; tying it to the clock instead makes one
+   * revolution one year, so the seasonal breathing of the northern hemisphere
+   * comes back around to the same face each time.
+   */
+  orbit = 0;
+  /** Pointer nudges, eased and added on top of the orbit. */
   angle = 0;
   angleDest = 0;
   dist = 600;
@@ -39,22 +47,34 @@ export class Camera {
   private projection = new Matrix4();
   private viewProjection = new Matrix4();
 
+  /**
+   * Set the orbit from elapsed playback: one revolution per twelve months, so
+   * a year of data is a turn of the globe. Takes a monotonic month count
+   * rather than the looping cursor, so the record wrapping around does not
+   * snap the camera.
+   */
+  setOrbit(monthsPlayed: number): void {
+    this.orbit = (monthsPlayed / 12) * Math.PI * 2;
+  }
+
   update(dt: number): void {
     const frames = dt * 60;
-    // Original per-frame: angleDest += 0.01; angle -= (angle - angleDest) * 0.1
-    this.angleDest += 0.01 * frames;
     const ease = 1 - Math.pow(0.9, frames);
+    // Original per-frame: angle -= (angle - angleDest) * 0.1. Only the
+    // pointer's contribution is eased now; the orbit itself comes from the
+    // clock, and easing it would let the globe drift out of step.
     this.angle += (this.angleDest - this.angle) * ease;
     this.dist += (this.distDest - this.dist) * ease;
     this.tilt += (this.tiltDest - this.tilt) * ease;
 
     // True spherical orbit: the distance to the globe stays constant as the
     // camera rises, so it keeps its framing all the way to the pole.
+    const heading = this.orbit + this.angle;
     const horizontal = Math.cos(this.tilt) * this.dist;
     this.eye = [
-      Math.sin(this.angle) * horizontal,
+      Math.sin(heading) * horizontal,
       Math.sin(this.tilt) * this.dist,
-      Math.cos(this.angle) * horizontal
+      Math.cos(heading) * horizontal
     ];
     this.view.lookAt({eye: this.eye, center: this.center, up: [0, 1, 0]});
   }
