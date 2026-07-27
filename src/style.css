@@ -123,18 +123,17 @@ body {
   flex: none;
 }
 
-/* Twenty names would collide on a phone-sized globe, so only the spread set
-   marked major in cities.ts is named; the rest keep just their dot. Fewer
-   names means each can afford to be a little larger.
+/* Crowded out by a higher-priority name - see the declutter in src/labels.ts.
+   The dot stays, so the geography survives where the type cannot fit. */
+.city.crowded .city-name {
+  display: none;
+}
 
-   Keyed on either axis, not just width: the globe is framed by the shorter one
-   (frameRadius against a 60 deg vertical FOV), so a phone held sideways is
-   860 x 390 and just as cramped as one held upright. */
+/* Every city is named on any screen; the declutter decides what fits, rather
+   than a breakpoint suppressing whole tiers. Keyed on either axis, since the
+   globe is framed by the shorter one (frameRadius against a 60 deg vertical
+   FOV) - a phone held sideways is 860 x 390 and just as cramped as upright. */
 @media (max-width: 620px), (max-height: 620px) {
-  .city.minor .city-name {
-    display: none;
-  }
-
   .city-name {
     font-size: 11px;
   }
