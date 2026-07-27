@@ -204,7 +204,15 @@ body {
   width: 100%;
   max-width: 240px;
   height: 30px;
-  margin-top: 4px;
+  /* Padding pulled back out by a matching negative margin: the chart stays
+     where it looks, but the scrub target is 46px tall rather than 30, which a
+     fingertip can actually find. touch-action stops the browser claiming the
+     drag for a scroll before the handler sees it. */
+  padding: 8px 0;
+  margin: -4px 0 -8px;
+  pointer-events: auto;
+  touch-action: none;
+  cursor: ew-resize;
 }
 
 .spark-svg {

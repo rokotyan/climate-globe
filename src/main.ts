@@ -77,6 +77,21 @@ async function main(): Promise<void> {
     );
   }
 
+  /**
+   * Scrubbing suspends the cursor via `scrubbing` rather than `playing`, so the
+   * city labels - which key off `playing` - do not fade in and out under the
+   * pointer. It also counts as taking over from an unattended cycle.
+   */
+  hud.onScrub = (month) => {
+    if (month === null) {
+      playback.scrubbing = false;
+      return;
+    }
+    layerSwitch.stopCycle();
+    playback.scrubbing = true;
+    playback.seek(month);
+  };
+
   bindInput({canvas, camera, playback, globe, controls, layerSwitch, bloom});
 
   let lastTime: number | null = null;

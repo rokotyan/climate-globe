@@ -26,6 +26,11 @@ export class Playback {
    * the whole record in about 23.
    */
   monthsPerSecond = 12;
+  /**
+   * Held while the sparkline is being scrubbed. Distinct from `playing`, which
+   * the city labels key off - a scrub should not make them fade in and out.
+   */
+  scrubbing = false;
   private cursor = 0; // fractional month index
 
   constructor(private dataset: Dataset) {}
@@ -37,7 +42,7 @@ export class Playback {
   }
 
   update(dt: number): void {
-    if (!this.playing) return;
+    if (!this.playing || this.scrubbing) return;
     const n = this.dataset.months.length;
     this.cursor = (this.cursor + dt * this.monthsPerSecond) % (n - 1);
   }

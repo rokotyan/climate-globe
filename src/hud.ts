@@ -30,6 +30,11 @@ export class Hud {
   private palette: PaletteId = 'default';
   /** Rebuilt per layer by renderInfo, since each has its own curve and scale. */
   private sparkline: Sparkline | null = null;
+  /**
+   * Set by main after construction. Read through a closure below rather than
+   * captured, so a sparkline built before it is assigned still reaches it.
+   */
+  onScrub: ((month: number | null) => void) | null = null;
 
   private paletteMix = 1;
 
@@ -105,7 +110,9 @@ export class Hud {
     el.innerHTML = lines.join('');
     // After the innerHTML above, which would otherwise discard its DOM.
     const host = document.getElementById('spark');
-    this.sparkline = host ? new Sparkline(host, dataset) : null;
+    this.sparkline = host
+      ? new Sparkline(host, dataset, (month) => this.onScrub?.(month))
+      : null;
   }
 
   /**

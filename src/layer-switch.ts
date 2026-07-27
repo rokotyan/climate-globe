@@ -27,7 +27,10 @@ export class LayerSwitch {
       b.type = 'button';
       b.className = 'layer-tab';
       b.textContent = label;
-      b.addEventListener('click', () => void this.select(id));
+      b.addEventListener('click', () => {
+        this.stopCycle();
+        void this.select(id);
+      });
       root.appendChild(b);
       this.buttons.set(id, b);
     }
@@ -57,13 +60,25 @@ export class LayerSwitch {
     if (layer) void this.select(layer.id);
   }
 
-  /**
-   * Relative move, wrapping - the arrow keys. Does not spend a pass: a viewer
-   * driving by hand should not shorten an unattended run.
-   */
+  /** Relative move, wrapping - the arrow keys. */
   step(delta: number): void {
-    this.elapsed = 0; // a deliberate switch gets a full dwell before the cycle moves on
+    this.elapsed = 0;
     this.move(delta);
+  }
+
+  /**
+   * A viewer has taken over, so stop advancing on our own. An unattended
+   * display should yield the moment somebody touches it, and never resume
+   * underneath them - hence clearing the budget rather than pausing it.
+   */
+  stopCycle(): void {
+    this.cycleSeconds = 0;
+    this.cyclesLeft = 0;
+    this.elapsed = 0;
+  }
+
+  get cycling(): boolean {
+    return this.cycleSeconds > 0;
   }
 
   /**

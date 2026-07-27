@@ -73,6 +73,7 @@ dragging:
 | | |
 | --- | --- |
 | **pointer** | vertical position tilts the camera (to 80°), horizontal motion nudges the orbit |
+| **sparkline** | hover to scrub through the record; drag it on touch |
 | **wheel / ↑ ↓** | zoom |
 | **click** | stop / start — and bring up the city labels |
 | **← →** | previous / next layer |
@@ -244,7 +245,14 @@ layer rather than by tallying steps, so using the arrows part-way through
 neither shortens the run nor leaves it resting somewhere arbitrary.
 
 Cycling fetches every layer before it starts, since they are lazy otherwise and
-a 3 MB download does not finish inside a one-second dwell.
+a 3 MB download does not finish inside a one-second dwell. It also stops the
+moment anybody touches the piece — a key, a tab, a tap on the globe, a scrub of
+the sparkline — and does not resume underneath them.
+
+The sparkline under the headline figure is a scrubber: run the pointer across it
+to move through the twenty-three years, or drag it on a phone. It holds the
+month rather than pausing, so the city labels stay out of the way while you
+scrub.
 
 ## Regenerating the data
 

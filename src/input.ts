@@ -32,7 +32,7 @@ const DRAG_TILT = 0.005;
 
 export function bindInput({canvas, camera, playback, globe, controls, layerSwitch, bloom}: Targets): void {
   const overUi = (e: Event) =>
-    (e.target as HTMLElement | null)?.closest('#controls, #layers, #caption') !== null;
+    (e.target as HTMLElement | null)?.closest('#controls, #layers, #caption, .info-spark') !== null;
 
   // --- Mouse: passive, no drag (the original's feel) ---
   let lastMouseX: number | null = null;
@@ -48,7 +48,9 @@ export function bindInput({canvas, camera, playback, globe, controls, layerSwitc
   // stopping is what a viewer reaches for - and it is what brings up the city
   // labels, so the globe becomes readable.
   canvas.addEventListener('pointerdown', (e) => {
-    if (e.pointerType === 'mouse') playback.togglePlay();
+    if (e.pointerType !== 'mouse') return;
+    layerSwitch.stopCycle();
+    playback.togglePlay();
   });
 
   // --- Touch / pen: drag to orbit, pinch to zoom, tap to step ---
@@ -96,6 +98,7 @@ export function bindInput({canvas, camera, playback, globe, controls, layerSwitc
     active.delete(e.pointerId);
     if (active.size < 2) pinchDist = 0;
     if (wasSingle && moved < TAP_SLOP_PX && e.timeStamp - downAt < TAP_MS) {
+      layerSwitch.stopCycle();
       playback.togglePlay();
     }
   };
@@ -117,6 +120,8 @@ export function bindInput({canvas, camera, playback, globe, controls, layerSwitc
   // --- Keyboard (mappings from the original) ---
   window.addEventListener('keydown', (e) => {
     if ((e.target as HTMLElement | null)?.tagName === 'INPUT') return;
+    // Any key means somebody is here: an unattended cycle yields to them.
+    layerSwitch.stopCycle();
     if (e.key >= '1' && e.key <= '9') {
       layerSwitch.selectByIndex(Number(e.key) - 1);
       return;
