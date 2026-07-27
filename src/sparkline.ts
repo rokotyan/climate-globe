@@ -49,12 +49,19 @@ export class Sparkline {
       .map((v, i) => `${((i / this.lastIndex) * W).toFixed(2)},${this.y(v).toFixed(2)}`)
       .join(' ');
 
+    /* The marker is positioned in percentages, which resolve against its
+       containing block - so that block has to be exactly the drawn area. The
+       hit target's vertical padding lives on the wrapper outside this, or the
+       percentages would map into a 46px box while the line occupied a 30px one
+       inset by the padding, and the marker would float off the curve. */
     root.innerHTML =
+      `<div class="spark-plot">` +
       `<svg class="spark-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">` +
       `<polygon class="spark-area" points="0,${H} ${points} ${W},${H}"/>` +
       `<polyline class="spark-line" points="${points}" vector-effect="non-scaling-stroke"/>` +
       `</svg>` +
-      `<div class="spark-dot"></div>`;
+      `<div class="spark-dot"></div>` +
+      `</div>`;
     this.dot = root.querySelector('.spark-dot') as HTMLDivElement;
     if (onScrub) this.bindScrub(root, onScrub);
   }

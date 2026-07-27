@@ -88,6 +88,9 @@ async function main(): Promise<void> {
       return;
     }
     layerSwitch.stopCycle();
+    // Reaching the sparkline means crossing to the top of the window, which the
+    // passive camera reads as "look from below". Recover the framing.
+    camera.resetTilt();
     playback.scrubbing = true;
     playback.seek(month);
   };

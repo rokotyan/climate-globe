@@ -86,10 +86,10 @@ export function bindInput({canvas, camera, playback, globe, controls, layerSwitc
       pinchDist = now;
       return;
     }
-    // Horizontal drag is inverted: dragging right spins the globe as if you had
-    // pushed its near face right, so the surface under the finger travels left.
-    // Vertical still follows the finger.
-    camera.nudge(-dx * DRAG_ANGLE, -dy * DRAG_TILT);
+    // Both axes inverted: a drag pushes the globe's near face, so the surface
+    // under the finger travels the opposite way - right and down here move it
+    // left and up.
+    camera.nudge(-dx * DRAG_ANGLE, dy * DRAG_TILT);
   });
 
   const endPointer = (e: PointerEvent) => {

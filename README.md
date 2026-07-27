@@ -86,9 +86,10 @@ dragging:
 | **h** | show the parameter panel |
 
 Touch has no hover, so it gets the conventional mapping: **drag** to orbit,
-**pinch** to zoom, **tap** to stop and start. Horizontal drag pushes the globe's
-near face, so the surface under your finger travels the other way — which is
-also the sense the pointer has always had on a mouse; the two used to disagree.
+**pinch** to zoom, **tap** to stop and start. Drag pushes the globe's near face
+on both axes, so the surface under your finger travels the other way —
+horizontally that is also the sense the pointer has always had on a mouse; the
+two used to disagree.
 
 `h` opens an authoring panel for displacement, texture limit, base radius,
 growth, lighting, rim light and falloff, bloom, the colour ramp, tilt range,

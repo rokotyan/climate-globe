@@ -102,6 +102,18 @@ export class Camera {
     this.tiltDest = fraction * ((this.maxTiltDegrees * Math.PI) / 180);
   }
 
+  /**
+   * Ease back to the opening tilt.
+   *
+   * The pointer's height sets the tilt absolutely, and the sparkline sits at the
+   * very top of the window - so simply reaching for it drove the tilt to about
+   * -63 degrees and left the globe being viewed from underneath. Scrubbing calls
+   * this so the view recovers while you use it.
+   */
+  resetTilt(): void {
+    this.tiltDest = START_TILT;
+  }
+
   adjustDist(delta: number): void {
     this.distDest = Math.min(this.maxDist, Math.max(this.minDist, this.distDest + delta));
   }
