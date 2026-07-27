@@ -52,6 +52,8 @@ export class CO2Globe {
   colorMax: number;
   /** 0 = classic green->red ramp, 1 = extended green->violet ramp. */
   paletteMix = 1;
+  /** Layers with meanings on particular values (temperature) get their own. */
+  palette: 'default' | 'temp' = 'default';
 
   constructor(private device: Device, private dataset: Dataset) {
     const means = dataset.months.map((m) => m.mean);
@@ -60,6 +62,7 @@ export class CO2Globe {
     this.colorMax = dataset.colorMax;
     this.perPpm = dataset.perUnit;
     this.texLimit = defaultTexLimit(dataset);
+    this.palette = dataset.palette;
     const {unitDirs, gridIndices} = buildVertices(dataset);
     const indices = buildIndices(dataset);
 
@@ -86,7 +89,8 @@ export class CO2Globe {
       uMonthMean: this.refMid,
       uRefMid: this.refMid,
       uTexLimit: this.texLimit,
-      uPaletteMix: this.paletteMix
+      uPaletteMix: this.paletteMix,
+      uPalette: 0
     };
 
     this.model = new Model(device, {
@@ -134,6 +138,7 @@ export class CO2Globe {
     this.colorMax = dataset.colorMax;
     this.perPpm = dataset.perUnit;
     this.texLimit = defaultTexLimit(dataset);
+    this.palette = dataset.palette;
 
     this.texture.destroy();
     this.texture = createAtlasTexture(this.device, dataset);
@@ -187,6 +192,7 @@ export class CO2Globe {
     u.uRefMid = this.refMid;
     u.uTexLimit = this.texLimit;
     u.uPaletteMix = this.paletteMix;
+    u.uPalette = this.palette === 'temp' ? 1 : 0;
 
     this.model.draw(renderPass);
   }

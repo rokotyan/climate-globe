@@ -90,6 +90,11 @@ LAYERS: dict[str, dict] = {
         "convert": lambda v: v - 273.15,
         "valid": (-90.0, 60.0),
         "perUnit": 1.6,
+        # Fixed rather than fitted, so the palette's stops land on the
+        # temperatures they mean: freezing at the middle, comfortable in the
+        # green, uncomfortable in the red.
+        "ramp": (-40.0, 40.0),
+        "palette": "temp",
     },
 }
 
@@ -132,10 +137,12 @@ def build_layer(layer_id: str, paths: list[Path], outdir: Path) -> None:
         grids,
         sources,
         unit=spec["unit"],
+        ramp=spec.get("ramp"),
         extra={
             "label": spec["label"],
             "decimals": spec["decimals"],
             "perUnit": spec["perUnit"],
+            **({"palette": spec["palette"]} if "palette" in spec else {}),
         },
     )
 
@@ -641,6 +648,7 @@ def write_layer(
     grids: np.ndarray,
     sources: list[str],
     unit: str,
+    ramp: tuple[float, float] | None = None,
     extra: dict | None = None,
 ) -> None:
     """Means, display ramp, uint8 encoding and the two output files."""
@@ -666,7 +674,9 @@ def write_layer(
     # record - temperature swings 100 degrees pole to tropic - so their ramp
     # has to span the values themselves rather than the monthly means.
     spread = float(np.percentile(grids, 99) - np.percentile(grids, 1))
-    if spread > (means.max() - means.min()) * 2:
+    if ramp:
+        color_min, color_max = ramp
+    elif spread > (means.max() - means.min()) * 2:
         color_min = float(np.floor(np.percentile(grids, 1)))
         color_max = float(np.ceil(np.percentile(grids, 99)))
     else:

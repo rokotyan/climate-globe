@@ -24,6 +24,30 @@ export const EXTENDED_STOPS: Array<[number, RGB]> = [
   [1.0, [0.478, 0.055, 0.063]] // dark red
 ];
 
+/**
+ * Temperature reads differently from a concentration: it has meanings attached
+ * to particular numbers rather than just "more" and "less". Blues below
+ * freezing, green where it is pleasant to stand outside, red once it is not.
+ *
+ * Positions are for the fixed -40..40 °C ramp the pipeline gives this layer,
+ * so each stop sits on the temperature named beside it.
+ */
+export const TEMP_STOPS: Array<[number, RGB]> = [
+  [0.0, [0.039, 0.165, 0.42]], // -40  deep blue
+  [0.1875, [0.118, 0.373, 0.749]], // -25  blue
+  [0.375, [0.31, 0.659, 0.91]], // -10  light blue
+  [0.5, [0.659, 0.863, 0.941]], //   0  pale, at freezing
+  [0.6, [0.435, 0.78, 0.659]], //   8  cool green
+  [0.7, [0.247, 0.686, 0.306]], //  16  green - comfortable
+  [0.75, [0.341, 0.749, 0.247]], //  20  green - still comfortable
+  [0.8125, [0.91, 0.851, 0.227]], //  25  yellow
+  [0.875, [0.941, 0.569, 0.165]], //  30  orange - hot
+  [0.9375, [0.886, 0.227, 0.118]], //  35  red
+  [1.0, [0.557, 0.09, 0.063]] //  40  dark red
+];
+
+export type PaletteId = 'default' | 'temp';
+
 export function normalizePpm(ppm: number, vmin: number, vmax: number): number {
   return Math.min(1, Math.max(0, (ppm - vmin) / (vmax - vmin)));
 }
@@ -33,21 +57,30 @@ export function classicColor(norm: number): RGB {
   return hsvToRgb(hue, 1, 1);
 }
 
-export function extendedColor(norm: number): RGB {
+function sampleStops(stops: Array<[number, RGB]>, norm: number): RGB {
   const t = clamp01(norm);
-  for (let i = 0; i < EXTENDED_STOPS.length - 1; i++) {
-    const [s0, c0] = EXTENDED_STOPS[i];
-    const [s1, c1] = EXTENDED_STOPS[i + 1];
+  for (let i = 0; i < stops.length - 1; i++) {
+    const [s0, c0] = stops[i];
+    const [s1, c1] = stops[i + 1];
     if (t <= s1) {
       const f = (t - s0) / (s1 - s0);
       return [c0[0] + (c1[0] - c0[0]) * f, c0[1] + (c1[1] - c0[1]) * f, c0[2] + (c1[2] - c0[2]) * f];
     }
   }
-  return EXTENDED_STOPS[EXTENDED_STOPS.length - 1][1];
+  return stops[stops.length - 1][1];
 }
 
-/** paletteMix: 0 = classic green->red, 1 = extended green->violet. */
-export function normToColor(norm: number, paletteMix = 1): RGB {
+export function extendedColor(norm: number): RGB {
+  return sampleStops(EXTENDED_STOPS, norm);
+}
+
+/**
+ * paletteMix: 0 = classic green->red, 1 = extended. The temperature palette
+ * ignores the mix - it means specific temperatures, so there is nothing
+ * sensible to blend it with.
+ */
+export function normToColor(norm: number, paletteMix = 1, palette: PaletteId = 'default'): RGB {
+  if (palette === 'temp') return sampleStops(TEMP_STOPS, norm);
   if (paletteMix <= 0) return classicColor(norm);
   if (paletteMix >= 1) return extendedColor(norm);
   const a = classicColor(norm);
@@ -59,8 +92,8 @@ export function normToColor(norm: number, paletteMix = 1): RGB {
   ];
 }
 
-export function normToCss(norm: number, paletteMix = 1): string {
-  const [r, g, b] = normToColor(norm, paletteMix);
+export function normToCss(norm: number, paletteMix = 1, palette: PaletteId = 'default'): string {
+  const [r, g, b] = normToColor(norm, paletteMix, palette);
   return `rgb(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)})`;
 }
 

@@ -1,5 +1,7 @@
+import type {PaletteId} from './color';
+
 /**
- * CO2 dataset: monthly global grids on the original AIRS 76x144 lat/lon grid.
+ * Layer datasets: monthly global grids on the original AIRS 76x144 lat/lon grid.
  * Values are stored month-major: values[month * rows * cols + row * cols + col], in ppm.
  */
 
@@ -54,6 +56,8 @@ export interface Dataset {
   decimals: number;
   /** Units of globe radius per unit of the quantity (CO2's original is 5/ppm) */
   perUnit: number;
+  /** Which colour ramp this layer reads on */
+  palette: PaletteId;
 }
 
 export type LayerId = 'co2' | 'ch4' | 'co' | 'temp';
@@ -80,6 +84,7 @@ interface Metadata {
   label?: string;
   decimals?: number;
   perUnit?: number;
+  palette?: PaletteId;
   /** 'u8' = one byte per cell, scaled to each month's own lo/hi (current);
    *  'u16' = two bytes per cell, scaled to the record's vmin/vmax (legacy). */
   encoding: 'u8' | 'u16';
@@ -139,7 +144,8 @@ export async function loadDataset(id: LayerId = 'co2', baseUrl = 'data/'): Promi
     decimals: meta.decimals ?? 1,
     // CO2 keeps the original's 5 units of radius per ppm; other layers carry
     // their own, chosen so each has a comparable amount of relief.
-    perUnit: meta.perUnit ?? 5
+    perUnit: meta.perUnit ?? 5,
+    palette: meta.palette ?? 'default'
   };
 }
 
@@ -203,7 +209,7 @@ export function generateSyntheticDataset(startYear = 2002, startMonth = 9, numMo
     rows, cols, lat: LAT, lon: LON, months, values,
     vmin, vmax, colorMin: vmin, colorMax: vmax,
     synthetic: true,
-    id: 'co2', label: 'CO₂', unit: 'ppm', decimals: 1, perUnit: 5
+    id: 'co2', label: 'CO₂', unit: 'ppm', decimals: 1, perUnit: 5, palette: 'default'
   };
 }
 

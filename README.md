@@ -87,6 +87,12 @@ Four quantities share the globe — tabs below it, or number keys **1**–**4**:
 | **CO** | ppb | carbon monoxide — biomass burning, huge seasonal plumes over Africa and the Amazon |
 | **Temp** | °C | near-surface temperature, and its enormous seasonal swing |
 
+Temperature gets its own palette, because it has meanings attached to
+particular numbers rather than just "more" and "less": blues below freezing,
+green from about 16 to 20 °C where it is pleasant to stand outside, and red
+once past 30. Its ramp is pinned to −40…40 °C rather than fitted to the data,
+so each stop keeps landing on the temperature it means.
+
 CH₄, CO and temperature come from CLIMCAPS alone, which covers the whole
 2002–2026 span on its own — so unlike CO₂ they need no splicing and carry no
 resampled noise: these quantities vary far more across the globe than CO₂ does

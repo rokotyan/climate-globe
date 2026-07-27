@@ -1,6 +1,6 @@
 import type {Dataset, MonthInfo} from './data';
 import type {PlaybackFrame} from './playback';
-import {normToCss, normalizePpm} from './color';
+import {normToCss, normalizePpm, type PaletteId} from './color';
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -71,6 +71,7 @@ export class Hud {
   private colorMax: number;
   private unit: string;
   private decimals: number;
+  private palette: PaletteId = 'default';
 
   private paletteMix = 1;
 
@@ -79,6 +80,7 @@ export class Hud {
     this.colorMax = dataset.colorMax;
     this.unit = dataset.unit;
     this.decimals = dataset.decimals;
+    this.palette = dataset.palette;
     this.drawColorbar();
     this.setRange(dataset.colorMin, dataset.colorMax);
     this.renderInfo(dataset);
@@ -88,6 +90,8 @@ export class Hud {
   setDataset(dataset: Dataset): void {
     this.unit = dataset.unit;
     this.decimals = dataset.decimals;
+    this.palette = dataset.palette;
+    this.drawColorbar();
     this.setRange(dataset.colorMin, dataset.colorMax);
     this.renderInfo(dataset);
   }
@@ -171,7 +175,7 @@ export class Hud {
     this.dateEl.textContent = `${frame.year} ${String(frame.month).padStart(2, '0')}`;
     const norm = normalizePpm(frame.meanPpm, this.colorMin, this.colorMax);
     this.ppmEl.textContent = `${frame.meanPpm.toFixed(this.decimals)} ${this.unit}`;
-    this.ppmEl.style.color = normToCss(norm, this.paletteMix);
+    this.ppmEl.style.color = normToCss(norm, this.paletteMix, this.palette);
     if (this.sourceEl.textContent !== frame.source) {
       this.sourceEl.textContent = frame.source;
     }
@@ -182,7 +186,7 @@ export class Hud {
     const ctx = canvas.getContext('2d')!;
     const {width, height} = canvas;
     for (let x = 0; x < width; x++) {
-      ctx.fillStyle = normToCss(x / (width - 1), this.paletteMix);
+      ctx.fillStyle = normToCss(x / (width - 1), this.paletteMix, this.palette);
       ctx.fillRect(x, 0, 1, height);
     }
   }

@@ -27,6 +27,8 @@ uniform float uRefMid;
 uniform float uTexLimit;
 // 0 = classic green->red ramp, 1 = extended green->violet ramp
 uniform float uPaletteMix;
+// 0 = the concentration ramps above, 1 = the temperature ramp
+uniform float uPalette;
 
 out vec3 vColor;
 out vec3 vWorldPos;
@@ -69,8 +71,43 @@ vec3 extendedRamp(float t) {
   return col;
 }
 
+/* Temperature ramp, anchored to actual degrees on the layer's fixed -40..40
+   scale: blues below freezing, green where it is comfortable, red past 30.
+   Mirrored in TS as TEMP_STOPS (src/color.ts) - keep the two in sync. */
+vec3 tempRamp(float t) {
+  const int N = 11;
+  vec3 c[11] = vec3[11](
+    vec3(0.039, 0.165, 0.420), // -40 deep blue
+    vec3(0.118, 0.373, 0.749), // -25 blue
+    vec3(0.310, 0.659, 0.910), // -10 light blue
+    vec3(0.659, 0.863, 0.941), //   0 freezing
+    vec3(0.435, 0.780, 0.659), //   8 cool green
+    vec3(0.247, 0.686, 0.306), //  16 green
+    vec3(0.341, 0.749, 0.247), //  20 green
+    vec3(0.910, 0.851, 0.227), //  25 yellow
+    vec3(0.941, 0.569, 0.165), //  30 orange
+    vec3(0.886, 0.227, 0.118), //  35 red
+    vec3(0.557, 0.090, 0.063)  //  40 dark red
+  );
+  float s[11] = float[11](
+    0.0, 0.1875, 0.375, 0.5, 0.6, 0.7, 0.75, 0.8125, 0.875, 0.9375, 1.0
+  );
+
+  vec3 col = c[N - 1];
+  for (int i = 0; i < N - 1; i++) {
+    if (t <= s[i + 1]) {
+      col = mix(c[i], c[i + 1], (t - s[i]) / (s[i + 1] - s[i]));
+      break;
+    }
+  }
+  return col;
+}
+
 vec3 rampColor(float t) {
   t = clamp(t, 0.0, 1.0);
+  // The temperature palette means particular degrees, so it is used as-is
+  // rather than blended with the concentration ramps.
+  if (uPalette > 0.5) return tempRamp(t);
   if (uPaletteMix <= 0.0) return classicRamp(t);
   if (uPaletteMix >= 1.0) return extendedRamp(t);
   return mix(classicRamp(t), extendedRamp(t), uPaletteMix);
