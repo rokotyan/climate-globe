@@ -9,6 +9,12 @@ grows: **+57 ppm since 2002, +15%**.
 
 ![The globe in April 2015 — 400 ppm, its surface furred with per-cell retrieval noise](docs/cover.png)
 
+The globe turns once per year of playback, so the seasonal breathing of the
+northern hemisphere comes back around to the same face each time. Twenty
+megacities are labelled — HTML text, but projected through the same matrix as
+the mesh and sitting at whatever radius their cell currently has, fading out as
+they cross the limb.
+
 **[▶ Open the live version](https://rokotyan.github.io/airs-co2/)**
 
 ## Two frames, twenty-two years apart

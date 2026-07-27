@@ -119,6 +119,23 @@ export class CO2Globe {
    * term at the record's highest monthly mean, plus a fully saturated local
    * deviation. Used to frame the camera so the globe never outgrows the view.
    */
+  /**
+   * World-space radius of one grid cell for the frame on screen - the same
+   * arithmetic the vertex shader does, so anything anchored to the surface
+   * (the city labels) sits exactly on it as the globe breathes.
+   */
+  radiusAtCell(row: number, col: number, monthA: number, monthB: number, t: number): number {
+    const {rows, cols, values, months} = this.dataset;
+    const cell = row * cols + col;
+    const a = values[monthA * rows * cols + cell];
+    const b = values[monthB * rows * cols + cell];
+    const ppm = a + (b - a) * t;
+
+    const monthMean = months[monthA].mean + (months[monthB].mean - months[monthA].mean) * t;
+    const deviation = this.texLimit * Math.tanh((ppm - monthMean) / this.texLimit);
+    return this.radiusBase + this.perPpm * (monthMean - this.refMid) + this.perPpm * deviation;
+  }
+
   get maxRadius(): number {
     const maxMean = Math.max(...this.dataset.months.map((m) => m.mean));
     return this.radiusBase + this.perPpm * (maxMean - this.refMid) + this.perPpm * this.texLimit;

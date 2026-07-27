@@ -84,6 +84,42 @@ body {
   white-space: nowrap;
 }
 
+/* --- City labels -------------------------------------------------------- */
+
+/* Positioned from the globe each frame - see src/labels.ts. The element sits
+   at the projected point and the contents hang to its right. */
+.city {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  font-size: clamp(9px, 1.15vmin, 12px);
+  font-weight: 300;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.92);
+  text-shadow: 0 0 6px rgba(0, 0, 0, 0.9);
+  will-change: transform, opacity;
+}
+
+.city-dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.9);
+  flex: none;
+}
+
+@media (max-width: 620px) {
+  /* Too many names for a phone-sized globe; the dots still give the geography */
+  .city-name {
+    display: none;
+  }
+}
+
 /* --- Standing summary of the record ------------------------------------- */
 
 #info {
