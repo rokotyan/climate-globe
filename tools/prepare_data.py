@@ -335,10 +335,15 @@ def synthesize_noise(
       residual = month - 3x3 smoothed month
 
     Donors are matched by calendar month, so the seasonal pattern of where
-    AIRS was noisy (polar night, cloud) lands where it belongs. The residual
-    is rescaled per latitude band to make up exactly the shortfall between the
-    recipient's own scatter and the donor era's, added in quadrature since the
-    two are independent.
+    AIRS was noisy (polar night, cloud) lands where it belongs.
+
+    Amplitude is matched **per cell**, not per latitude band. How noisy AIRS
+    was varies strongly with longitude as well as latitude - within one row the
+    noisiest cell runs about 3x the quietest - so a single factor per row
+    flattens that geography. Each cell gets its own target, taken from the
+    spread of the donor months at that cell, and the shortfall against the
+    recipient's own scatter is made up in quadrature since the two are
+    independent.
 
     Returns updated source labels - recipients are marked, because after this
     their fine texture is borrowed rather than measured.
@@ -347,9 +352,6 @@ def synthesize_noise(
 
     def residual(g: np.ndarray) -> np.ndarray:
         return g - ndimage.uniform_filter(g, size=3, mode="nearest")
-
-    def band_rms(r: np.ndarray) -> np.ndarray:
-        return np.sqrt((r**2).mean(axis=1))  # per latitude row
 
     # The last source is the smooth one; everything before it donates.
     order = list(dict.fromkeys(sources))
@@ -360,9 +362,20 @@ def synthesize_noise(
     donors = [i for i, s in enumerate(sources) if s != recipient_label]
     recipients = [i for i, s in enumerate(sources) if s == recipient_label]
 
-    # `gain` scales the target above the donor era's own scatter, for when the
-    # measured amount does not read strongly enough on screen.
-    target = np.mean([band_rms(residual(grids[i])) for i in donors], axis=0) * gain
+    # How noisy each cell actually was, across every donor month. `gain` lifts
+    # the target above the measured amount when it does not read strongly
+    # enough on screen.
+    donor_res = np.stack([residual(grids[i]) for i in donors]).astype(np.float32)
+    spread = donor_res.std(axis=0)  # (rows, cols)
+    target = spread * gain
+    own = np.stack([residual(grids[i]) for i in recipients]).astype(np.float32).std(axis=0)
+    need = np.sqrt(np.maximum(0.0, target**2 - own**2))
+
+    # Dividing a donor month by that spread turns it into a unit-variance field
+    # that still has the month's own shape; `need` then sets the amplitude cell
+    # by cell. The floor keeps quiet cells from blowing up the division.
+    floor = max(spread.mean() * 0.05, 1e-6)
+    unit_scale = need / np.maximum(spread, floor)
 
     # Donors indexed by calendar month, so a January is dressed with Januaries
     by_month: dict[int, list[int]] = {}
@@ -371,18 +384,13 @@ def synthesize_noise(
 
     for n, i in enumerate(recipients):
         pool = by_month.get(month_keys[i][1]) or donors
-        donor = pool[n % len(pool)]
-        d = residual(grids[donor])
-        own = band_rms(residual(grids[i]))
-        need = np.sqrt(np.maximum(0.0, target**2 - own**2))
-        scale = np.divide(need, band_rms(d), out=np.zeros_like(need), where=band_rms(d) > 1e-9)
-        grids[i] += d * scale[:, None]
+        grids[i] += residual(grids[pool[n % len(pool)]]) * unit_scale
 
-    after = np.mean([band_rms(residual(grids[i])).mean() for i in recipients])
+    after = np.stack([residual(grids[i]) for i in recipients]).astype(np.float32).std(axis=0)
     print(
         f"noise: {len(recipients)} months of '{recipient_label}' dressed with residuals "
-        f"from {len(donors)} earlier months, gain {gain:g} "
-        f"(now {after:.2f} vs target {target.mean():.2f} ppm)"
+        f"from {len(donors)} earlier months, gain {gain:g}, matched per cell "
+        f"(now {after.mean():.2f} vs target {target.mean():.2f} ppm)"
     )
     return [f"{s} + resampled noise" if s == recipient_label else s for s in sources]
 
