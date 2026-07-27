@@ -77,6 +77,7 @@ dragging:
 | **p** | stop / start (same as click) |
 | **f** | fullscreen |
 | **l** | faceted lighting on/off |
+| **b** | bloom on/off |
 | **1**–**4** | switch layer (or use the tabs under the globe) |
 | **h** | show the parameter panel |
 
@@ -84,9 +85,34 @@ Touch has no hover, so it gets the conventional mapping: **drag** to orbit,
 **pinch** to zoom, **tap** to stop and start.
 
 `h` opens an authoring panel for displacement, texture limit, base radius,
-growth, lighting, the colour ramp, tilt range, playback speed and rotation
-rate. It is a tool for tuning the look, not part of the piece, so it starts
-hidden.
+growth, lighting, rim light and falloff, bloom, the colour ramp, tilt range,
+playback speed and rotation rate. It is a tool for tuning the look, not part of
+the piece, so it starts hidden.
+
+## Light
+
+Two effects sit on top of the original's unlit surface, both kept faint — the
+globe should look like it has air around it, not like a render.
+
+A **Fresnel rim** glows at grazing angles, traced along the *undisplaced* sphere
+normal so it draws one clean limb; the real surface normal would catch every fur
+spike and fray it. A **bloom** pass then spills that glow past the edge:
+offscreen `rgba16float`, bright pass, two blurred octaves at half resolution,
+added back.
+
+The governing constraint is that **colour is data here.** Nothing scales the
+surface — the ramp reaches the screen exactly as the colorbar reports it, and
+both effects are purely additive. There is no tone curve in the composite for
+the same reason: it would rescale every cell and quietly break the mapping.
+
+That also rules out the usual way of deciding what glows. Thresholding on
+brightness cannot work on this palette — Rec.709 reads bright green at 0.65 but
+deep red, the loudest colour on the ramp, at only 0.34, so it lit the calm early
+years and left the alarming end dull. Max channel fixed the ordering but not the
+problem: the ramp peaks near 0.95, so any threshold low enough to catch the reds
+caught the whole surface and washed the globe to salmon. So the globe writes an
+explicit mask into the otherwise unused **alpha channel** instead, and the bloom
+became atmosphere around the planet rather than fog over it.
 
 ## Layers
 

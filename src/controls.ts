@@ -3,6 +3,7 @@ import type {Playback} from './playback';
 import type {Hud} from './hud';
 import type {Camera} from './camera';
 import type {Dataset} from './data';
+import type {Bloom} from './post';
 
 /**
  * Live tweak panel: sliders bound directly to the render/playback parameters
@@ -29,7 +30,8 @@ export class Controls {
     playback: Playback,
     hud: Hud,
     dataset: Dataset,
-    camera: Camera
+    camera: Camera,
+    bloom: Bloom
   ) {
     // Size-changing sliders re-frame the camera so the globe cannot outgrow
     // the viewport; snap=false lets the existing easing glide there.
@@ -48,6 +50,14 @@ export class Controls {
         get: () => globe.trendGain, set: (v) => { globe.trendGain = v; reframe(); }},
       {label: 'Lighting', min: 0, max: 1, step: 0.05, decimals: 2,
         get: () => globe.lightMix, set: (v) => (globe.lightMix = v)},
+      {label: 'Rim light', min: 0, max: 2, step: 0.05, decimals: 2,
+        get: () => globe.rimStrength, set: (v) => (globe.rimStrength = v)},
+      {label: 'Rim falloff', min: 1, max: 8, step: 0.1, decimals: 1,
+        get: () => globe.rimPower, set: (v) => (globe.rimPower = v)},
+      {label: 'Bloom (halo)', min: 0, max: 4, step: 0.05, decimals: 2,
+        // 0 turns the whole chain off, which also skips the offscreen pass.
+        get: () => (bloom.enabled ? bloom.intensity : 0),
+        set: (v) => { bloom.enabled = v > 0; bloom.intensity = v; }},
       {label: 'Palette (classic → extended)', min: 0, max: 1, step: 0.05, decimals: 2,
         get: () => globe.paletteMix,
         set: (v) => {
@@ -148,7 +158,7 @@ export class Controls {
 
     const hint = document.createElement('div');
     hint.className = 'controls-hint';
-    hint.textContent = 'h hide · p pause · l light · click step · wheel zoom';
+    hint.textContent = 'h hide · p pause · b bloom · l light · → step · wheel zoom';
     body.appendChild(hint);
   }
 

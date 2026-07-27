@@ -9,6 +9,7 @@ import {CO2Globe} from './co2-globe';
 import {Hud} from './hud';
 import {Controls} from './controls';
 import {Labels} from './labels';
+import {Bloom} from './post';
 import {bindInput} from './input';
 
 async function main(): Promise<void> {
@@ -27,9 +28,10 @@ async function main(): Promise<void> {
   const startParam = new URLSearchParams(window.location.search).get('start');
   if (startParam !== null) playback.seek(Number(startParam));
   const globe = new CO2Globe(device, dataset);
+  const bloom = new Bloom(device);
   const hud = new Hud(dataset);
   const labels = new Labels(document.getElementById('cities')!, dataset);
-  const controls = new Controls(globe, playback, hud, dataset, camera);
+  const controls = new Controls(globe, playback, hud, dataset, camera, bloom);
   camera.frameRadius(globe.maxRadius);
 
   // Layers are fetched on first use and kept, so switching back is instant.
@@ -47,14 +49,14 @@ async function main(): Promise<void> {
     controls.refresh();
   });
 
-  bindInput({canvas, camera, playback, globe, controls, layerSwitch});
+  bindInput({canvas, camera, playback, globe, controls, layerSwitch, bloom});
 
   let lastTime: number | null = null;
 
   const loop = new AnimationLoop({
     device,
     autoResizeViewport: true,
-    onRender: ({device, aspect, time}) => {
+    onRender: ({aspect, time}) => {
       const dt = lastTime === null ? 1 / 60 : Math.min((time - lastTime) / 1000, 0.1);
       lastTime = time;
 
@@ -66,9 +68,14 @@ async function main(): Promise<void> {
       const frame = playback.frame();
 
       const viewProj = camera.getViewProjection(aspect);
-      const renderPass = device.beginRenderPass({clearColor: [0, 0, 0, 1], clearDepth: 1});
-      globe.render(renderPass, viewProj, frame.monthA, frame.monthB, frame.t);
+      // Draws offscreen when bloom is on, straight to the canvas when it is
+      // off; composite() is the no-op in the latter case.
+      const renderPass = bloom.beginScenePass(canvas.width, canvas.height);
+      globe.render(
+        renderPass, viewProj, camera.eye, frame.monthA, frame.monthB, frame.t, bloom.enabled
+      );
       renderPass.end();
+      bloom.composite();
 
       // Labels project through the same matrix the globe was just drawn with.
       // They belong to the paused, readable state - keep positioning them

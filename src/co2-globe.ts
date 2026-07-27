@@ -65,6 +65,17 @@ export class CO2Globe {
   paletteMix = 1;
   /** Layers with meanings on particular values (temperature) get their own. */
   palette: 'default' | 'temp' = 'default';
+  /**
+   * Fresnel rim light. Added, not mixed, so it never alters a cell's reported
+   * value, and allowed past 1.0 so the bloom pass has something to catch.
+   */
+  rimStrength = 0.2;
+  /**
+   * Falloff exponent; higher keeps the glow tighter to the limb. Tuned high: at
+   * 3 the band was wide enough to blow out to white once the bloom was added on
+   * top, and the effect is wanted as a hint of atmosphere, not a ring.
+   */
+  rimPower = 6.9;
 
   constructor(private device: Device, private dataset: Dataset) {
     const means = dataset.months.map((m) => m.mean);
@@ -103,7 +114,11 @@ export class CO2Globe {
       uTexLimit: this.texLimit,
       uTrendGain: this.trendGain,
       uPaletteMix: this.paletteMix,
-      uPalette: 0
+      uPalette: 0,
+      uEye: new Float32Array(3),
+      uRimStrength: this.rimStrength,
+      uRimPower: this.rimPower,
+      uAlphaMask: 0
     };
 
     this.model = new Model(device, {
@@ -192,9 +207,12 @@ export class CO2Globe {
   render(
     renderPass: RenderPass,
     viewProj: Float32Array,
+    eye: readonly [number, number, number],
     monthA: number,
     monthB: number,
-    t: number
+    t: number,
+    /** True when this pass targets the offscreen bloom buffer - see uAlphaMask. */
+    writeBloomMask = false
   ): void {
     const months = this.dataset.months;
     const meanA = months[monthA].mean;
@@ -216,6 +234,10 @@ export class CO2Globe {
     u.uTrendGain = this.trendGain;
     u.uPaletteMix = this.paletteMix;
     u.uPalette = this.palette === 'temp' ? 1 : 0;
+    (u.uEye as Float32Array).set(eye);
+    u.uRimStrength = this.rimStrength;
+    u.uRimPower = this.rimPower;
+    u.uAlphaMask = writeBloomMask ? 1 : 0;
 
     this.model.draw(renderPass);
   }

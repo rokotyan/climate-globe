@@ -233,6 +233,9 @@ body {
   white-space: nowrap;
   opacity: 0.75;
   transition: opacity 0.35s ease;
+  /* Reads over the globe, which now reaches this far down and can be a bright
+     red behind it - the HUD's shared shadow alone leaves it illegible. */
+  text-shadow: 0 0 3px rgba(0, 0, 0, 0.95), 0 0 10px rgba(0, 0, 0, 0.85);
 }
 
 /* The parameter panel opens over the same corner, so the summary steps aside

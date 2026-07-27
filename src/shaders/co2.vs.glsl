@@ -35,6 +35,10 @@ uniform float uPalette;
 
 out vec3 vColor;
 out vec3 vWorldPos;
+/* The undisplaced sphere normal. The rim wants this rather than the real
+   surface normal: traced along the smooth sphere it draws one clean limb,
+   where the displaced normal would catch every fur spike and fray it. */
+out vec3 vSphereNormal;
 // Passed to the fragment stage so it needs no uniforms of its own.
 flat out float vLightMix;
 
@@ -137,6 +141,7 @@ void main() {
   float radius =
     uRadiusBase + uTrendGain * uPerPpm * (uMonthMean - uRefMid) + uPerPpm * deviation;
   vWorldPos = radius * unitDir;
+  vSphereNormal = unitDir;
   vLightMix = uLightMix;
   gl_Position = uViewProj * vec4(vWorldPos, 1.0);
 }

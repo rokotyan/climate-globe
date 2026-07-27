@@ -3,6 +3,7 @@ import type {Playback} from './playback';
 import type {CO2Globe} from './co2-globe';
 import type {Controls} from './controls';
 import type {LayerSwitch} from './layer-switch';
+import type {Bloom} from './post';
 
 /**
  * Pointer, touch and keyboard bindings.
@@ -20,6 +21,7 @@ interface Targets {
   globe: CO2Globe;
   controls: Controls;
   layerSwitch: LayerSwitch;
+  bloom: Bloom;
 }
 
 const TAP_SLOP_PX = 12;
@@ -28,7 +30,7 @@ const TAP_MS = 400;
 const DRAG_ANGLE = 0.006;
 const DRAG_TILT = 0.005;
 
-export function bindInput({canvas, camera, playback, globe, controls, layerSwitch}: Targets): void {
+export function bindInput({canvas, camera, playback, globe, controls, layerSwitch, bloom}: Targets): void {
   const overUi = (e: Event) =>
     (e.target as HTMLElement | null)?.closest('#controls, #layers') !== null;
 
@@ -127,6 +129,10 @@ export function bindInput({canvas, camera, playback, globe, controls, layerSwitc
         break;
       case 'l':
         globe.lightMix = globe.lightMix > 0 ? 0 : 1;
+        controls.refresh();
+        break;
+      case 'b':
+        bloom.enabled = !bloom.enabled;
         controls.refresh();
         break;
       case 'h':
