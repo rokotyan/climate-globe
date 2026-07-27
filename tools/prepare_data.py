@@ -55,9 +55,13 @@ CLIMCAPS_VAR = "co2_vmr_uppertrop"
 M_AIR = 28.9644
 
 # Extra layers the app can show, all from the same CLIMCAPS granules. Each
-# converts to a unit a reader recognises, and carries how it should be drawn:
-# the display ramp, and how many units of radius one unit of the quantity is
-# worth (chosen so each layer has a comparable amount of relief).
+# converts to a unit a reader recognises, and carries how it should be drawn.
+#
+# `perUnit` is how many units of radius one unit of the quantity is worth. The
+# app soft-caps a cell's deviation at 35% of the ramp, so perUnit is chosen to
+# put that cap near 35 units of relief - what CO2 gets from the original's
+# 5 units/ppm against a 7 ppm cap. Without matching them, a layer with a wide
+# ramp (CO spans 115 ppb) comes out violently lumpier than the rest.
 LAYERS: dict[str, dict] = {
     "ch4": {
         "var": "ch4_mmr_midtrop",
@@ -76,7 +80,7 @@ LAYERS: dict[str, dict] = {
         "decimals": 0,
         "convert": lambda v: v * (M_AIR / 28.010) * 1e9,
         "valid": (20.0, 600.0),
-        "perUnit": 2.2,
+        "perUnit": 0.85,
     },
     "temp": {
         "var": "surf_air_temp",
@@ -85,7 +89,7 @@ LAYERS: dict[str, dict] = {
         "decimals": 1,
         "convert": lambda v: v - 273.15,
         "valid": (-90.0, 60.0),
-        "perUnit": 2.6,
+        "perUnit": 1.6,
     },
 }
 
