@@ -322,7 +322,7 @@ def regrid_month(field: xr.DataArray) -> np.ndarray:
 
 
 def synthesize_noise(
-    grids: np.ndarray, sources: list[str], month_keys: list[tuple[int, int]]
+    grids: np.ndarray, sources: list[str], month_keys: list[tuple[int, int]], gain: float = 1.0
 ) -> list[str]:
     """
     Give the smooth modern months the retrieval noise of the earlier ones.
@@ -360,7 +360,9 @@ def synthesize_noise(
     donors = [i for i, s in enumerate(sources) if s != recipient_label]
     recipients = [i for i, s in enumerate(sources) if s == recipient_label]
 
-    target = np.mean([band_rms(residual(grids[i])) for i in donors], axis=0)
+    # `gain` scales the target above the donor era's own scatter, for when the
+    # measured amount does not read strongly enough on screen.
+    target = np.mean([band_rms(residual(grids[i])) for i in donors], axis=0) * gain
 
     # Donors indexed by calendar month, so a January is dressed with Januaries
     by_month: dict[int, list[int]] = {}
@@ -376,10 +378,11 @@ def synthesize_noise(
         scale = np.divide(need, band_rms(d), out=np.zeros_like(need), where=band_rms(d) > 1e-9)
         grids[i] += d * scale[:, None]
 
-    before = np.mean([band_rms(residual(grids[i])).mean() for i in recipients])
+    after = np.mean([band_rms(residual(grids[i])).mean() for i in recipients])
     print(
         f"noise: {len(recipients)} months of '{recipient_label}' dressed with residuals "
-        f"from {len(donors)} earlier months (now {before:.2f} vs target {target.mean():.2f} ppm)"
+        f"from {len(donors)} earlier months, gain {gain:g} "
+        f"(now {after:.2f} vs target {target.mean():.2f} ppm)"
     )
     return [f"{s} + resampled noise" if s == recipient_label else s for s in sources]
 
@@ -459,6 +462,14 @@ def main() -> None:
         "modern ones, so the record keeps its texture throughout. Recipient "
         "months are labelled '+ resampled noise'.",
     )
+    parser.add_argument(
+        "--noise-gain",
+        type=float,
+        default=1.0,
+        metavar="X",
+        help="Scale the synthesized noise above the donor era's own scatter "
+        "(default 1.0 = match it).",
+    )
     parser.add_argument("-o", "--outdir", type=Path, default=Path(__file__).parent / "../public/data")
     args = parser.parse_args()
 
@@ -499,7 +510,7 @@ def main() -> None:
     grids = gap_fill(grids)
 
     if args.synth_noise:
-        sources = synthesize_noise(grids, sources, month_keys)
+        sources = synthesize_noise(grids, sources, month_keys, args.noise_gain)
 
     # Area-weighted global means
     weights = np.cos(np.deg2rad(LAT))[:, None]
