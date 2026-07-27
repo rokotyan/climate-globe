@@ -1,7 +1,7 @@
 import {luma} from '@luma.gl/core';
 import {webgl2Adapter} from '@luma.gl/webgl';
 import {AnimationLoop} from '@luma.gl/engine';
-import {loadDataset, loadDatasetWithFallback, type Dataset, type LayerId} from './data';
+import {LAYERS, loadDataset, loadDatasetWithFallback, type Dataset, type LayerId} from './data';
 import {LayerSwitch} from './layer-switch';
 import {Camera} from './camera';
 import {Playback} from './playback';
@@ -25,7 +25,8 @@ async function main(): Promise<void> {
 
   const camera = new Camera();
   const playback = new Playback(dataset);
-  const startParam = new URLSearchParams(window.location.search).get('start');
+  const params = new URLSearchParams(window.location.search);
+  const startParam = params.get('start');
   if (startParam !== null) playback.seek(Number(startParam));
   const globe = new CO2Globe(device, dataset);
   const bloom = new Bloom(device);
@@ -49,6 +50,26 @@ async function main(): Promise<void> {
     controls.refresh();
   });
 
+  /**
+   * `?cycle` walks the layers unattended, a second each by default (`?cycle=4`
+   * for four). Every layer is fetched up front in that mode: they are lazy
+   * normally, and a 3 MB fetch does not finish inside a one-second dwell, so
+   * the first pass round would otherwise stall on each in turn.
+   */
+  if (params.has('cycle')) {
+    const seconds = Number(params.get('cycle'));
+    layerSwitch.cycleSeconds = Number.isFinite(seconds) && seconds > 0 ? seconds : 1;
+    await Promise.all(
+      LAYERS.filter((l) => !loaded.has(l.id)).map(async (l) => {
+        try {
+          loaded.set(l.id, await loadDataset(l.id));
+        } catch (err) {
+          console.warn(`layer ${l.id} unavailable for cycling:`, err);
+        }
+      })
+    );
+  }
+
   bindInput({canvas, camera, playback, globe, controls, layerSwitch, bloom});
 
   let lastTime: number | null = null;
@@ -61,6 +82,7 @@ async function main(): Promise<void> {
       lastTime = time;
 
       playback.update(dt);
+      layerSwitch.tick(dt);
       // The spin runs on its own rate, but only while the piece does - a
       // stopped globe is what the city labels are for.
       if (playback.playing) camera.advanceOrbit(dt);

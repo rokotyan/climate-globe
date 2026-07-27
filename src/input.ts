@@ -32,7 +32,7 @@ const DRAG_TILT = 0.005;
 
 export function bindInput({canvas, camera, playback, globe, controls, layerSwitch, bloom}: Targets): void {
   const overUi = (e: Event) =>
-    (e.target as HTMLElement | null)?.closest('#controls, #layers') !== null;
+    (e.target as HTMLElement | null)?.closest('#controls, #layers, #caption') !== null;
 
   // --- Mouse: passive, no drag (the original's feel) ---
   let lastMouseX: number | null = null;
@@ -84,8 +84,10 @@ export function bindInput({canvas, camera, playback, globe, controls, layerSwitc
       pinchDist = now;
       return;
     }
-    // Drag follows the finger: right/up moves the globe right/up.
-    camera.nudge(dx * DRAG_ANGLE, -dy * DRAG_TILT);
+    // Horizontal drag is inverted: dragging right spins the globe as if you had
+    // pushed its near face right, so the surface under the finger travels left.
+    // Vertical still follows the finger.
+    camera.nudge(-dx * DRAG_ANGLE, -dy * DRAG_TILT);
   });
 
   const endPointer = (e: PointerEvent) => {
@@ -139,7 +141,14 @@ export function bindInput({canvas, camera, playback, globe, controls, layerSwitc
         controls.toggleVisible();
         break;
       case 'ArrowRight':
-        // The original's click-to-advance, now that click stops and starts
+        layerSwitch.step(1);
+        break;
+      case 'ArrowLeft':
+        layerSwitch.step(-1);
+        break;
+      case '.':
+        // The original's click-to-advance. It sat on ArrowRight until the arrows
+        // were given over to switching layers.
         playback.step();
         break;
       case 'ArrowUp':

@@ -75,16 +75,19 @@ dragging:
 | **pointer** | vertical position tilts the camera (to 80°), horizontal motion nudges the orbit |
 | **wheel / ↑ ↓** | zoom |
 | **click** | stop / start — and bring up the city labels |
-| **→** | advance one month |
+| **← →** | previous / next layer |
+| **.** | advance one month |
 | **p** | stop / start (same as click) |
 | **f** | fullscreen |
 | **l** | faceted lighting on/off |
 | **b** | bloom on/off |
-| **1**–**4** | switch layer (or use the tabs under the globe) |
+| **1**–**4** | pick a layer directly (or use the tabs under the globe) |
 | **h** | show the parameter panel |
 
 Touch has no hover, so it gets the conventional mapping: **drag** to orbit,
-**pinch** to zoom, **tap** to stop and start.
+**pinch** to zoom, **tap** to stop and start. Horizontal drag pushes the globe's
+near face, so the surface under your finger travels the other way — which is
+also the sense the pointer has always had on a mouse; the two used to disagree.
 
 `h` opens an authoring panel for displacement, texture limit, base radius,
 growth, lighting, rim light and falloff, bloom, the colour ramp, tilt range,
@@ -225,8 +228,12 @@ npm run dev      # http://localhost:5199
 npm run build    # typechecks, then builds to dist/
 ```
 
-URL parameters: `?start=<n>` opens at month *n*, `?synthetic` uses the built-in
-generated dataset instead of the real record.
+URL parameters: `?start=<n>` opens at month *n*, `?cycle` walks the layers
+unattended a second each (`?cycle=4` for four seconds), and `?synthetic` uses
+the built-in generated dataset instead of the real record.
+
+`?cycle` fetches every layer before it starts, since they are lazy otherwise and
+a 3 MB download does not finish inside a one-second dwell.
 
 ## Regenerating the data
 
