@@ -28,7 +28,7 @@ interface Anchor {
 export class Labels {
   private anchors: Anchor[] = [];
 
-  constructor(root: HTMLElement, dataset: CO2Dataset) {
+  constructor(private root: HTMLElement, dataset: CO2Dataset) {
     const {lat, lon} = dataset;
 
     for (const city of CITIES) {
@@ -107,8 +107,9 @@ export class Labels {
     }
   }
 
+  /** Fades the whole set in and out; per-label facing still applies underneath. */
   setVisible(visible: boolean): void {
-    for (const {el} of this.anchors) el.style.display = visible ? '' : 'none';
+    this.root.classList.toggle('visible', visible);
   }
 }
 

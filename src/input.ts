@@ -39,8 +39,11 @@ export function bindInput({canvas, camera, playback, globe, controls}: Targets):
     camera.onPointerMove(e.clientY, dx, window.innerHeight);
   });
 
+  // Click stops and starts the piece. The original stepped a month here, but
+  // stopping is what a viewer reaches for - and it is what brings up the city
+  // labels, so the globe becomes readable.
   canvas.addEventListener('pointerdown', (e) => {
-    if (e.pointerType === 'mouse') playback.step();
+    if (e.pointerType === 'mouse') playback.togglePlay();
   });
 
   // --- Touch / pen: drag to orbit, pinch to zoom, tap to step ---
@@ -86,7 +89,7 @@ export function bindInput({canvas, camera, playback, globe, controls}: Targets):
     active.delete(e.pointerId);
     if (active.size < 2) pinchDist = 0;
     if (wasSingle && moved < TAP_SLOP_PX && e.timeStamp - downAt < TAP_MS) {
-      playback.step();
+      playback.togglePlay();
     }
   };
   canvas.addEventListener('pointerup', endPointer);
@@ -121,6 +124,10 @@ export function bindInput({canvas, camera, playback, globe, controls}: Targets):
         break;
       case 'h':
         controls.toggleVisible();
+        break;
+      case 'ArrowRight':
+        // The original's click-to-advance, now that click stops and starts
+        playback.step();
         break;
       case 'ArrowUp':
         camera.adjustDist(-10);

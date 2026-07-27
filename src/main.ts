@@ -52,7 +52,10 @@ async function main(): Promise<void> {
       globe.render(renderPass, viewProj, frame.monthA, frame.monthB, frame.t);
       renderPass.end();
 
-      // Labels project through the same matrix the globe was just drawn with
+      // Labels project through the same matrix the globe was just drawn with.
+      // They belong to the paused, readable state - keep positioning them
+      // while they fade so they never fade out mid-drift.
+      labels.setVisible(!playback.playing);
       labels.update(camera, globe, frame, viewProj, canvas.clientWidth, canvas.clientHeight);
       hud.update(frame);
     }

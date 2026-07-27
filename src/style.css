@@ -86,6 +86,17 @@ body {
 
 /* --- City labels -------------------------------------------------------- */
 
+/* The set only shows while paused - the piece runs uncluttered, and stopping
+   it turns the globe into something you can read. */
+#cities {
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+
+#cities.visible {
+  opacity: 1;
+}
+
 /* Positioned from the globe each frame - see src/labels.ts. The element sits
    at the projected point and the contents hang to its right. */
 .city {
