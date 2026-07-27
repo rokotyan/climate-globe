@@ -42,6 +42,10 @@ export class Controls {
         get: () => globe.texLimit, set: (v) => { globe.texLimit = v; reframe(); }},
       {label: 'Base radius', min: 150, max: 700, step: 10, decimals: 0,
         get: () => globe.radiusBase, set: (v) => { globe.radiusBase = v; reframe(); }},
+      // Scales the trend term only, so the globe can grow less without the fur
+      // flattening with it.
+      {label: 'Growth (trend gain)', min: 0, max: 1.5, step: 0.05, decimals: 2,
+        get: () => globe.trendGain, set: (v) => { globe.trendGain = v; reframe(); }},
       {label: 'Lighting', min: 0, max: 1, step: 0.05, decimals: 2,
         get: () => globe.lightMix, set: (v) => (globe.lightMix = v)},
       {label: 'Palette (classic → extended)', min: 0, max: 1, step: 0.05, decimals: 2,

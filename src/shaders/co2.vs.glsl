@@ -25,6 +25,9 @@ uniform float uMonthsPerAtlasRow;
 uniform float uMonthMean;
 uniform float uRefMid;
 uniform float uTexLimit;
+// Fraction of the record's trend shown as growth; scales only the mean term,
+// leaving the local deviation (the fur) at full strength.
+uniform float uTrendGain;
 // 0 = classic green->red ramp, 1 = extended green->violet ramp
 uniform float uPaletteMix;
 // 0 = the concentration ramps above, 1 = the temperature ramp
@@ -131,7 +134,8 @@ void main() {
   // deviation is soft-limited like the original's [360,400] window, so
   // extreme surface cells cannot become huge quills.
   float deviation = uTexLimit * tanh((ppm - uMonthMean) / uTexLimit);
-  float radius = uRadiusBase + uPerPpm * (uMonthMean - uRefMid) + uPerPpm * deviation;
+  float radius =
+    uRadiusBase + uTrendGain * uPerPpm * (uMonthMean - uRefMid) + uPerPpm * deviation;
   vWorldPos = radius * unitDir;
   vLightMix = uLightMix;
   gl_Position = uViewProj * vec4(vWorldPos, 1.0);

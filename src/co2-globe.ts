@@ -34,8 +34,9 @@ export class CO2Globe {
    * The base is larger than the original's 200 because this record is longer:
    * its mean spans ~50 ppm, so at 5 units/ppm the trend alone swings the
    * radius by +-125. On a base of 200 the globe would grow threefold and the
-   * early years would shrink to a third of the frame; 360 keeps the growth
-   * near the original's ~2x, which is what the framing was tuned around.
+   * early years would shrink to a third of the frame. Since the camera frames
+   * on maxRadius, only ratios matter here - raising the base would flatten the
+   * apparent fur, so the trend is held back with trendGain instead.
    */
   radiusBase = 360;
   perPpm = 5;
@@ -47,6 +48,16 @@ export class CO2Globe {
    * do not become quills.
    */
   texLimit = 7;
+  /**
+   * How much of the record's trend shows up as growth, as a fraction. Separate
+   * from perPpm because that scale governs both the trend and the fur, and CO2
+   * needs them pulled apart: over 24 years its mean climbs 50 ppm, which at 5
+   * units/ppm swings the radius by +-125 against a 65-unit fur term, so the
+   * globe opens at 43% of its framed size and more than doubles. The other
+   * layers' trends are a third of that or less and need no correction, so this
+   * is 1 for them - see defaultTrendGain.
+   */
+  trendGain = 1;
   /** ppm mapped to the green (low) and red (high) ends of the color ramp. */
   colorMin: number;
   colorMax: number;
@@ -62,6 +73,7 @@ export class CO2Globe {
     this.colorMax = dataset.colorMax;
     this.perPpm = dataset.perUnit;
     this.texLimit = defaultTexLimit(dataset);
+    this.trendGain = defaultTrendGain(dataset);
     this.palette = dataset.palette;
     const {unitDirs, gridIndices} = buildVertices(dataset);
     const indices = buildIndices(dataset);
@@ -89,6 +101,7 @@ export class CO2Globe {
       uMonthMean: this.refMid,
       uRefMid: this.refMid,
       uTexLimit: this.texLimit,
+      uTrendGain: this.trendGain,
       uPaletteMix: this.paletteMix,
       uPalette: 0
     };
@@ -121,11 +134,6 @@ export class CO2Globe {
   }
 
   /**
-   * Largest radius any month can reach with the current settings - the trend
-   * term at the record's highest monthly mean, plus a fully saturated local
-   * deviation. Used to frame the camera so the globe never outgrows the view.
-   */
-  /**
    * Swap in another layer: same mesh and grid, new values. Only the atlas and
    * the value-dependent parameters change, so switching costs one texture
    * upload rather than a rebuild.
@@ -138,6 +146,7 @@ export class CO2Globe {
     this.colorMax = dataset.colorMax;
     this.perPpm = dataset.perUnit;
     this.texLimit = defaultTexLimit(dataset);
+    this.trendGain = defaultTrendGain(dataset);
     this.palette = dataset.palette;
 
     this.texture.destroy();
@@ -159,12 +168,25 @@ export class CO2Globe {
 
     const monthMean = months[monthA].mean + (months[monthB].mean - months[monthA].mean) * t;
     const deviation = this.texLimit * Math.tanh((ppm - monthMean) / this.texLimit);
-    return this.radiusBase + this.perPpm * (monthMean - this.refMid) + this.perPpm * deviation;
+    return (
+      this.radiusBase +
+      this.trendGain * this.perPpm * (monthMean - this.refMid) +
+      this.perPpm * deviation
+    );
   }
 
+  /**
+   * Largest radius any month can reach with the current settings - the trend
+   * term at the record's highest monthly mean, plus a fully saturated local
+   * deviation. Used to frame the camera so the globe never outgrows the view.
+   */
   get maxRadius(): number {
     const maxMean = Math.max(...this.dataset.months.map((m) => m.mean));
-    return this.radiusBase + this.perPpm * (maxMean - this.refMid) + this.perPpm * this.texLimit;
+    return (
+      this.radiusBase +
+      this.trendGain * this.perPpm * (maxMean - this.refMid) +
+      this.perPpm * this.texLimit
+    );
   }
 
   render(
@@ -191,6 +213,7 @@ export class CO2Globe {
     u.uMonthMean = meanA + (meanB - meanA) * t;
     u.uRefMid = this.refMid;
     u.uTexLimit = this.texLimit;
+    u.uTrendGain = this.trendGain;
     u.uPaletteMix = this.paletteMix;
     u.uPalette = this.palette === 'temp' ? 1 : 0;
 
@@ -212,6 +235,16 @@ export class CO2Globe {
  * scale to their spread, since a value that means "extreme" for methane is
  * nothing like one for temperature.
  */
+/**
+ * Fraction of the trend shown as growth. Only CO2 needs holding back: its mean
+ * climbs far enough over 24 years to swing the radius by three times any other
+ * layer's, opening at 43% of the framed size and doubling. 0.4 brings it into
+ * line with CH4 (opens near 65%, grows ~1.4x) while leaving the fur untouched.
+ */
+function defaultTrendGain(dataset: Dataset): number {
+  return dataset.id === 'co2' ? 0.4 : 1;
+}
+
 function defaultTexLimit(dataset: Dataset): number {
   if (dataset.id === 'co2') return 13;
   // Chosen so every layer gets a comparable amount of relief (perUnit x this,
