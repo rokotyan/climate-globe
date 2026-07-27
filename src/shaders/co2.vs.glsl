@@ -49,7 +49,7 @@ vec3 classicRamp(float t) {
 vec3 extendedRamp(float t) {
   const int N = 7;
   vec3 c[7] = vec3[7](
-    vec3(0.204, 0.643, 0.302), // green
+    vec3(0.204, 0.343, 0.302), // green
     vec3(0.353, 0.769, 0.278), // bright green
     vec3(0.659, 0.847, 0.169), // yellow-green
     vec3(0.949, 0.882, 0.173), // yellow
@@ -57,7 +57,7 @@ vec3 extendedRamp(float t) {
     vec3(0.886, 0.200, 0.122), // red
     vec3(0.478, 0.055, 0.063)  // dark red
   );
-  float s[7] = float[7](0.0, 0.20, 0.38, 0.52, 0.66, 0.82, 1.0);
+  float s[7] = float[7](0.0, 0.20, 0.32, 0.52, 0.66, 0.82, 1.0);
 
   vec3 col = c[N - 1];
   for (int i = 0; i < N - 1; i++) {

@@ -15,9 +15,9 @@ export type RGB = [number, number, number];
 
 /** Stops as [position, colour]; positions must be ascending and span 0..1. */
 export const EXTENDED_STOPS: Array<[number, RGB]> = [
-  [0.0, [0.204, 0.643, 0.302]], // green
+  [0.0, [0.204, 0.343, 0.302]], // green
   [0.2, [0.353, 0.769, 0.278]], // bright green
-  [0.38, [0.659, 0.847, 0.169]], // yellow-green
+  [0.32, [0.659, 0.847, 0.169]], // yellow-green
   [0.52, [0.949, 0.882, 0.173]], // yellow
   [0.66, [0.961, 0.58, 0.094]], // orange
   [0.82, [0.886, 0.2, 0.122]], // red
