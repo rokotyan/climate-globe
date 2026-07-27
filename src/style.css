@@ -9,6 +9,10 @@
   --edge-bottom: max(14px, env(safe-area-inset-bottom));
   --readout: clamp(22px, 4.4vmin, 44px);
   --caption: clamp(11px, 1.5vmin, 15px);
+  /* Height the credit line takes at the bottom; the legend, tabs and hint are
+     all offset by it so adding the caption did not require retuning three
+     separate magic numbers. */
+  --caption-stack: 0px;
   --panel-text: clamp(11px, 1.4vmin, 14px);
   --ink: #f2f2f2;
   --ink-dim: #9a9a9a;
@@ -64,6 +68,24 @@ body {
   flex: 0 0 auto;
   text-align: right;
   line-height: 1.15;
+}
+
+/* Above the phone breakpoint the row becomes a grid so the credit line lands on
+   the true centre. As a plain flex item it sat midway between its neighbours,
+   which is not the same thing - the summary is wider than the readout, so it
+   came out ~100px right of centre and read as a mistake against a globe that is
+   centred. Equal 1fr side columns put the auto middle column exactly on 50%.
+   Scoped to desktop: the phone layout stacks differently and is left alone. */
+@media (min-width: 621px) {
+  #hud-top {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: start;
+  }
+
+  #readout {
+    justify-self: end;
+  }
 }
 
 #date,
@@ -221,7 +243,7 @@ body {
    corner is free for the one thing a viewer needs told. */
 #hint {
   position: absolute;
-  bottom: calc(var(--edge-bottom) + 88px);
+  bottom: calc(var(--edge-bottom) + var(--caption-stack) + 88px);
   left: 50%;
   transform: translateX(-50%);
   font-size: var(--caption);
@@ -247,7 +269,7 @@ body.controls-open #info {
 
 #layers {
   position: absolute;
-  bottom: calc(var(--edge-bottom) + 46px);
+  bottom: calc(var(--edge-bottom) + var(--caption-stack) + 46px);
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -295,7 +317,7 @@ body.controls-open #info {
 
 #legend {
   position: absolute;
-  bottom: var(--edge-bottom);
+  bottom: calc(var(--edge-bottom) + var(--caption-stack));
   left: 50%;
   transform: translateX(-50%);
   width: min(400px, calc(100vw - 2 * var(--edge)));
@@ -457,5 +479,63 @@ body.ready #loading {
 @media (max-height: 520px) {
   #info {
     display: none;
+  }
+}
+
+/* --- Credit line -------------------------------------------------------- */
+
+/* The middle item of the top row, where a wide screen has room going spare.
+   Flexbox rather than absolute centring: as a sibling of the summary and the
+   readout it cannot collide with either at any width, whereas a centred box
+   would start overlapping the readout somewhere around 700px.
+
+   pointer-events are re-enabled because #hud disables them wholesale, and
+   without this the links would not be clickable; see also the #caption entry in
+   input.ts's overUi, which keeps a pointer resting here from steering the
+   camera. */
+#caption {
+  flex: 0 1 auto;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-content: flex-start;
+  gap: 0 6px;
+  /* Optical alignment with the uppercase head line beside it. */
+  padding-top: 2px;
+  font-size: clamp(10px, 1.25vmin, 12px);
+  font-weight: 300;
+  letter-spacing: 0.02em;
+  color: var(--ink-dim);
+  opacity: 0.7;
+  pointer-events: auto;
+  text-align: center;
+}
+
+#caption a {
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.22);
+  transition: color 0.2s, border-color 0.2s;
+}
+
+#caption a:hover {
+  color: var(--ink);
+  border-bottom-color: rgba(255, 255, 255, 0.55);
+}
+
+/* A phone has no room across the top - the summary and the readout already fill
+   it - but plenty below the legend. Lifted out of the flex row and fixed to the
+   bottom edge, where it wraps to two lines, so the stack above needs the room. */
+@media (max-width: 620px) {
+  :root {
+    --caption-stack: 38px;
+  }
+
+  #caption {
+    position: fixed;
+    left: var(--edge);
+    right: var(--edge);
+    bottom: var(--edge-bottom);
+    padding-top: 0;
   }
 }
