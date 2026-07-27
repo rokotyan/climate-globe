@@ -10,10 +10,10 @@ grows: **+57 ppm since 2002, +15%**.
 ![The globe in April 2015 — 400 ppm, its surface furred with per-cell retrieval noise](docs/cover.png)
 
 The globe turns once per year of playback, so the seasonal breathing of the
-northern hemisphere comes back around to the same face each time. Twenty
-megacities are labelled — HTML text, but projected through the same matrix as
-the mesh and sitting at whatever radius their cell currently has, fading out as
-they cross the limb.
+northern hemisphere comes back around to the same face each time. Click to stop
+it and twenty megacities fade in — HTML text, but projected through the same
+matrix as the mesh and sitting at whatever radius their cell currently has,
+fading out again as they cross the limb.
 
 **[▶ Open the live version](https://rokotyan.github.io/airs-co2/)**
 
@@ -61,14 +61,15 @@ dragging:
 | --- | --- |
 | **pointer** | vertical position tilts the camera (to 80°), horizontal motion nudges the orbit |
 | **wheel / ↑ ↓** | zoom |
-| **click** | advance one month |
-| **p** | pause / resume (the camera keeps orbiting) |
+| **click** | stop / start — and bring up the city labels |
+| **→** | advance one month |
+| **p** | stop / start (same as click) |
 | **f** | fullscreen |
 | **l** | faceted lighting on/off |
 | **h** | show the parameter panel |
 
 Touch has no hover, so it gets the conventional mapping: **drag** to orbit,
-**pinch** to zoom, **tap** to advance a month.
+**pinch** to zoom, **tap** to stop and start.
 
 `h` opens an authoring panel for displacement, texture limit, base radius,
 lighting, the colour ramp, tilt range and playback speed. It is a tool for
