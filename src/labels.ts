@@ -1,7 +1,7 @@
 import {CITIES} from './cities';
 import type {Camera} from './camera';
 import type {CO2Globe} from './co2-globe';
-import type {CO2Dataset} from './data';
+import type {Dataset} from './data';
 import type {PlaybackFrame} from './playback';
 
 /**
@@ -28,7 +28,7 @@ interface Anchor {
 export class Labels {
   private anchors: Anchor[] = [];
 
-  constructor(private root: HTMLElement, dataset: CO2Dataset) {
+  constructor(private root: HTMLElement, dataset: Dataset) {
     const {lat, lon} = dataset;
 
     for (const city of CITIES) {

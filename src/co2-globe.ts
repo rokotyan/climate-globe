@@ -1,6 +1,6 @@
 import {Buffer, Device, RenderPass, Texture} from '@luma.gl/core';
 import {Model} from '@luma.gl/engine';
-import type {CO2Dataset} from './data';
+import type {Dataset} from './data';
 import vs from './shaders/co2.vs.glsl?raw';
 import fs from './shaders/co2.fs.glsl?raw';
 
@@ -53,11 +53,13 @@ export class CO2Globe {
   /** 0 = classic green->red ramp, 1 = extended green->violet ramp. */
   paletteMix = 1;
 
-  constructor(device: Device, private dataset: CO2Dataset) {
+  constructor(private device: Device, private dataset: Dataset) {
     const means = dataset.months.map((m) => m.mean);
     this.refMid = (Math.min(...means) + Math.max(...means)) / 2;
     this.colorMin = dataset.colorMin;
     this.colorMax = dataset.colorMax;
+    this.perPpm = dataset.perUnit;
+    this.texLimit = defaultTexLimit(dataset);
     const {unitDirs, gridIndices} = buildVertices(dataset);
     const indices = buildIndices(dataset);
 
@@ -120,6 +122,25 @@ export class CO2Globe {
    * deviation. Used to frame the camera so the globe never outgrows the view.
    */
   /**
+   * Swap in another layer: same mesh and grid, new values. Only the atlas and
+   * the value-dependent parameters change, so switching costs one texture
+   * upload rather than a rebuild.
+   */
+  setDataset(dataset: Dataset): void {
+    this.dataset = dataset;
+    const means = dataset.months.map((m) => m.mean);
+    this.refMid = (Math.min(...means) + Math.max(...means)) / 2;
+    this.colorMin = dataset.colorMin;
+    this.colorMax = dataset.colorMax;
+    this.perPpm = dataset.perUnit;
+    this.texLimit = defaultTexLimit(dataset);
+
+    this.texture.destroy();
+    this.texture = createAtlasTexture(this.device, dataset);
+    this.model.setBindings({co2Texture: this.texture});
+  }
+
+  /**
    * World-space radius of one grid cell for the frame on screen - the same
    * arithmetic the vertex shader does, so anything anchored to the surface
    * (the city labels) sits exactly on it as the globe breathes.
@@ -179,8 +200,19 @@ export class CO2Globe {
   }
 }
 
+/**
+ * How far a cell may stray from its month's mean before the displacement soft
+ * caps, in the layer's own units. CO2 keeps the original's 7 ppm; the others
+ * scale to their spread, since a value that means "extreme" for methane is
+ * nothing like one for temperature.
+ */
+function defaultTexLimit(dataset: Dataset): number {
+  if (dataset.id === 'co2') return 7;
+  return (dataset.colorMax - dataset.colorMin) * 0.35;
+}
+
 /** Same sphere mapping as CO2Mesh's constructor (theta from lat, phi from lon). */
-function buildVertices(dataset: CO2Dataset): {unitDirs: Float32Array; gridIndices: Float32Array} {
+function buildVertices(dataset: Dataset): {unitDirs: Float32Array; gridIndices: Float32Array} {
   const {rows, cols, lat, lon} = dataset;
   const unitDirs = new Float32Array(rows * cols * 3);
   const gridIndices = new Float32Array(rows * cols * 2);
@@ -200,7 +232,7 @@ function buildVertices(dataset: CO2Dataset): {unitDirs: Float32Array; gridIndice
 }
 
 /** Same topology as CO2Mesh::initMesh: quads between adjacent lat rows, wrapping in longitude. */
-function buildIndices(dataset: CO2Dataset): Uint32Array {
+function buildIndices(dataset: Dataset): Uint32Array {
   const {rows, cols} = dataset;
   const indices = new Uint32Array((rows - 1) * cols * 6);
   let i = 0;
@@ -220,7 +252,7 @@ function buildIndices(dataset: CO2Dataset): Uint32Array {
 }
 
 /** Pack every month into one R32F 2D texture, MONTHS_PER_ATLAS_ROW slices per atlas row. */
-function createAtlasTexture(device: Device, dataset: CO2Dataset): Texture {
+function createAtlasTexture(device: Device, dataset: Dataset): Texture {
   const {rows, cols, months, values} = dataset;
   const atlasCols = MONTHS_PER_ATLAS_ROW;
   const atlasRows = Math.ceil(months.length / atlasCols);

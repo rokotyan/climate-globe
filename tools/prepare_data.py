@@ -51,8 +51,97 @@ AIRS_VAR = "mole_fraction_of_carbon_dioxide_in_free_troposphere"
 
 CLIMCAPS_VAR = "co2_vmr_uppertrop"
 
+# Dry-air mean molar mass, for turning mass mixing ratios into volume ones
+M_AIR = 28.9644
 
-def read_climcaps(path: Path) -> tuple[tuple[int, int], np.ndarray]:
+# Extra layers the app can show, all from the same CLIMCAPS granules. Each
+# converts to a unit a reader recognises, and carries how it should be drawn:
+# the display ramp, and how many units of radius one unit of the quantity is
+# worth (chosen so each layer has a comparable amount of relief).
+LAYERS: dict[str, dict] = {
+    "ch4": {
+        "var": "ch4_mmr_midtrop",
+        "label": "CH₄",
+        "unit": "ppb",
+        "decimals": 0,
+        # kg/kg dry air -> ppb by volume
+        "convert": lambda v: v * (M_AIR / 16.043) * 1e9,
+        "valid": (1000.0, 3000.0),
+        "perUnit": 0.55,
+    },
+    "co": {
+        "var": "co_mmr_midtrop",
+        "label": "CO",
+        "unit": "ppb",
+        "decimals": 0,
+        "convert": lambda v: v * (M_AIR / 28.010) * 1e9,
+        "valid": (20.0, 600.0),
+        "perUnit": 2.2,
+    },
+    "temp": {
+        "var": "surf_air_temp",
+        "label": "Temperature",
+        "unit": "°C",
+        "decimals": 1,
+        "convert": lambda v: v - 273.15,
+        "valid": (-90.0, 60.0),
+        "perUnit": 2.6,
+    },
+}
+
+
+def build_layer(layer_id: str, paths: list[Path], outdir: Path) -> None:
+    """
+    Build one of the extra layers from CLIMCAPS granules.
+
+    Unlike CO2 - which is spliced from three products to reach back to 2002 -
+    these come from CLIMCAPS alone, which covers the whole span on its own. So
+    there is no donor era to borrow noise from and none is added: these
+    quantities vary far more across the globe than CO2 does, and carry plenty
+    of structure without it.
+    """
+    spec = LAYERS[layer_id]
+    records: dict[tuple[int, int], np.ndarray] = {}
+
+    for i, path in enumerate(sorted(paths)):
+        key, grid = read_climcaps(path, spec["var"], spec["convert"], spec["valid"])
+        records[key] = grid
+        sys.stdout.write(f"\rreading {layer_id} {i + 1}/{len(paths)}")
+        sys.stdout.flush()
+    print()
+
+    month_keys = sorted(records)
+    grids = np.stack([records[k] for k in month_keys])
+    missing = int(np.isnan(grids).sum())
+    print(
+        f"{len(month_keys)} months, {month_keys[0][0]}-{month_keys[0][1]:02d} .. "
+        f"{month_keys[-1][0]}-{month_keys[-1][1]:02d}; missing cells "
+        f"{missing} ({100 * missing / grids.size:.1f}%)"
+    )
+    grids = gap_fill(grids)
+
+    sources = ["AIRS CLIMCAPS L3"] * len(month_keys)
+    write_layer(
+        outdir,
+        layer_id,
+        month_keys,
+        grids,
+        sources,
+        unit=spec["unit"],
+        extra={
+            "label": spec["label"],
+            "decimals": spec["decimals"],
+            "perUnit": spec["perUnit"],
+        },
+    )
+
+
+def read_climcaps(
+    path: Path,
+    var: str = CLIMCAPS_VAR,
+    convert=lambda v: v * 1e6,
+    valid: tuple[float, float] = (300.0, 500.0),
+) -> tuple[tuple[int, int], np.ndarray]:
     """
     Read one AIRS CLIMCAPS L3 monthly granule (1x1 degree) onto the app grid.
 
@@ -70,12 +159,12 @@ def read_climcaps(path: Path) -> tuple[tuple[int, int], np.ndarray]:
     year, month = int(m.group(1)), int(m.group(2))
 
     ds = xr.open_dataset(path)
-    if CLIMCAPS_VAR not in ds.variables:
-        raise SystemExit(f"{path.name}: no {CLIMCAPS_VAR}")
-    da = ds[CLIMCAPS_VAR]
+    if var not in ds.variables:
+        raise SystemExit(f"{path.name}: no {var}")
+    da = ds[var]
     if "orbit_pass" in da.dims:
         da = da.mean(dim="orbit_pass", skipna=True)
-    field = np.asarray(da.values, dtype=np.float64) * 1e6  # m3/m3 -> ppm
+    field = convert(np.asarray(da.values, dtype=np.float64))
     src_lat = np.asarray(ds["lat"].values, dtype=np.float64)
     src_lon = np.asarray(ds["lon"].values, dtype=np.float64)
     ds.close()
@@ -83,7 +172,7 @@ def read_climcaps(path: Path) -> tuple[tuple[int, int], np.ndarray]:
     rows = np.abs(src_lat[None, :] - LAT[:, None]).argmin(axis=1)
     cols = np.abs(src_lon[None, :] - LON[:, None]).argmin(axis=1)
     grid = field[np.ix_(rows, cols)]
-    grid[(grid < 300.0) | (grid > 500.0)] = np.nan
+    grid[(grid < valid[0]) | (grid > valid[1])] = np.nan
     return (year, month), grid
 
 
@@ -478,8 +567,17 @@ def main() -> None:
         help="Scale the synthesized noise above the donor era's own scatter "
         "(default 1.0 = match it).",
     )
+    parser.add_argument(
+        "--layer",
+        choices=sorted(LAYERS),
+        help="Build one of the extra layers (CLIMCAPS granules only) instead of CO2",
+    )
     parser.add_argument("-o", "--outdir", type=Path, default=Path(__file__).parent / "../public/data")
     args = parser.parse_args()
+
+    if args.layer:
+        build_layer(args.layer, args.inputs, args.outdir)
+        return
 
     primary = load_source(args.inputs)
     extensions = [load_source(group) for group in args.extend]
@@ -520,6 +618,28 @@ def main() -> None:
     if args.synth_noise:
         sources = synthesize_noise(grids, sources, month_keys, args.noise_gain)
 
+    write_layer(
+        args.outdir,
+        "co2",
+        month_keys,
+        grids,
+        sources,
+        unit="ppm",
+        # 5 units of radius per ppm is the original CO2Mesh displacement
+        extra={"label": "CO₂", "decimals": 1, "perUnit": 5},
+    )
+
+
+def write_layer(
+    outdir: Path,
+    name: str,
+    month_keys: list[tuple[int, int]],
+    grids: np.ndarray,
+    sources: list[str],
+    unit: str,
+    extra: dict | None = None,
+) -> None:
+    """Means, display ramp, uint8 encoding and the two output files."""
     # Area-weighted global means
     weights = np.cos(np.deg2rad(LAT))[:, None]
     means = (grids * weights).sum(axis=(1, 2)) / (weights.sum() * LON.size)
@@ -527,7 +647,7 @@ def main() -> None:
     # Record range, for reference and as the fallback display domain.
     vmin = float(np.floor(grids.min()))
     vmax = float(np.ceil(grids.max()))
-    print(f"record range: {vmin} .. {vmax} ppm")
+    print(f"record range: {vmin} .. {vmax} {unit}")
 
     # Suggested display ramp, spanning the record's monthly means with headroom
     # so neither end saturates and the whole animation stays legible.
@@ -537,10 +657,19 @@ def main() -> None:
     # 2002-2012 record ending near 392 ppm. This formula reproduces that low
     # anchor (365) and grows the top end as the record extends, instead of
     # pinning 395 and flattening every later month to saturated red.
-    color_min = float(np.floor(means.min() - 6.0))
-    color_max = float(np.ceil(means.max() + 4.0))
+    #
+    # Layers other than CO2 vary far more within a month than across the
+    # record - temperature swings 100 degrees pole to tropic - so their ramp
+    # has to span the values themselves rather than the monthly means.
+    spread = float(np.percentile(grids, 99) - np.percentile(grids, 1))
+    if spread > (means.max() - means.min()) * 2:
+        color_min = float(np.floor(np.percentile(grids, 1)))
+        color_max = float(np.ceil(np.percentile(grids, 99)))
+    else:
+        color_min = float(np.floor(means.min() - 6.0))
+        color_max = float(np.ceil(means.max() + 4.0))
     print(
-        f"display ramp: {color_min} .. {color_max} ppm "
+        f"display ramp: {color_min} .. {color_max} {unit} "
         f"(monthly means {means.min():.1f} .. {means.max():.1f})"
     )
 
@@ -559,8 +688,8 @@ def main() -> None:
     )
     err = np.abs(lo[:, None, None] + quantized / 255.0 * span[:, None, None] - grids)
     print(
-        f"encoding: uint8 per month, max error {err.max():.3f} ppm "
-        f"(mean {err.mean():.4f}); month spans {span.min():.1f}..{span.max():.1f} ppm"
+        f"encoding: uint8 per month, max error {err.max():.3f} {unit} "
+        f"(mean {err.mean():.4f}); month spans {span.min():.1f}..{span.max():.1f} {unit}"
     )
 
     # Per-month cell-to-cell RMS ("fur"): how much fine texture each month
@@ -572,10 +701,10 @@ def main() -> None:
     fur = [
         float(np.std(g - _ndi.uniform_filter(g, size=3, mode="nearest"))) for g in grids
     ]
-    print(f"per-month fur: {min(fur):.2f} .. {max(fur):.2f} ppm cell-to-cell RMS")
+    print(f"per-month fur: {min(fur):.2f} .. {max(fur):.2f} {unit} cell-to-cell RMS")
     for label in dict.fromkeys(sources):
         vals = [f for f, s in zip(fur, sources) if s == label]
-        print(f"  {label}: {np.mean(vals):.2f} ppm mean")
+        print(f"  {label}: {np.mean(vals):.2f} {unit} mean")
 
     months = [
         {
@@ -591,10 +720,10 @@ def main() -> None:
         for i, (y, mo) in enumerate(month_keys)
     ]
 
-    outdir = args.outdir.resolve()
+    outdir = outdir.resolve()
     outdir.mkdir(parents=True, exist_ok=True)
-    (outdir / "co2.bin").write_bytes(quantized.tobytes())
-    (outdir / "co2.json").write_text(
+    (outdir / f"{name}.bin").write_bytes(quantized.tobytes())
+    (outdir / f"{name}.json").write_text(
         json.dumps(
             {
                 "rows": int(LAT.size),
@@ -606,12 +735,14 @@ def main() -> None:
                 "vmax": vmax,
                 "colorMin": color_min,
                 "colorMax": color_max,
+                "unit": unit,
                 "encoding": "u8",
+                **(extra or {}),
             }
         )
     )
-    size_mb = (outdir / "co2.bin").stat().st_size / 1e6
-    print(f"wrote {outdir / 'co2.bin'} ({size_mb:.1f} MB) and co2.json")
+    size_mb = (outdir / f"{name}.bin").stat().st_size / 1e6
+    print(f"wrote {outdir / (name + '.bin')} ({size_mb:.1f} MB) and {name}.json")
 
 
 if __name__ == "__main__":

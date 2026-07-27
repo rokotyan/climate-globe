@@ -1,4 +1,4 @@
-import type {CO2Dataset, MonthInfo} from './data';
+import type {Dataset, MonthInfo} from './data';
 import type {PlaybackFrame} from './playback';
 import {normToCss, normalizePpm} from './color';
 
@@ -17,7 +17,7 @@ function monthName(m: MonthInfo): string {
 }
 
 /** Contiguous run of months from one product, for the provenance line. */
-function sourceSpans(dataset: CO2Dataset): Array<{label: string; from: number; to: number}> {
+function sourceSpans(dataset: Dataset): Array<{label: string; from: number; to: number}> {
   const spans: Array<{label: string; from: number; to: number}> = [];
   for (const m of dataset.months) {
     const label = m.source;
@@ -34,7 +34,7 @@ function sourceSpans(dataset: CO2Dataset): Array<{label: string; from: number; t
  * say so and when - otherwise the surface simply appears to go smooth for no
  * visible reason. Returns null when the texture holds up throughout.
  */
-function granularityNote(dataset: CO2Dataset): string | null {
+function granularityNote(dataset: Dataset): string | null {
   const months = dataset.months;
   const sources = [...new Set(months.map((m) => m.source).filter(Boolean))];
   if (sources.length < 2) return null;
@@ -69,13 +69,25 @@ export class Hud {
   private vmaxLabel = document.getElementById('vmax-label')!;
   private colorMin: number;
   private colorMax: number;
+  private unit: string;
+  private decimals: number;
 
   private paletteMix = 1;
 
-  constructor(dataset: CO2Dataset) {
+  constructor(dataset: Dataset) {
     this.colorMin = dataset.colorMin;
     this.colorMax = dataset.colorMax;
+    this.unit = dataset.unit;
+    this.decimals = dataset.decimals;
     this.drawColorbar();
+    this.setRange(dataset.colorMin, dataset.colorMax);
+    this.renderInfo(dataset);
+  }
+
+  /** Point the readout, colorbar and summary at another layer. */
+  setDataset(dataset: Dataset): void {
+    this.unit = dataset.unit;
+    this.decimals = dataset.decimals;
     this.setRange(dataset.colorMin, dataset.colorMax);
     this.renderInfo(dataset);
   }
@@ -86,21 +98,32 @@ export class Hud {
    * partway - why the surface loses its fine texture when it does. Derived
    * from the data so it stays true whenever the dataset is regenerated.
    */
-  private renderInfo(dataset: CO2Dataset): void {
+  private renderInfo(dataset: Dataset): void {
     const el = document.getElementById('info');
     if (!el) return;
 
     const months = dataset.months;
     const first = months[0];
     const last = months[months.length - 1];
-    const delta = CURRENT_READING.ppm - first.mean;
-    const percent = (delta / first.mean) * 100;
+    const {unit, decimals} = dataset;
+
+    // CO2 quotes a present-day figure from outside the record, since the
+    // satellite products lag by months. The other layers have no such
+    // reference, so they report their own last month.
+    const isCO2 = dataset.id === 'co2';
+    const headline = isCO2 ? CURRENT_READING.ppm : last.mean;
+    const asOf = isCO2 ? CURRENT_READING.label : monthName(last);
+    const delta = headline - first.mean;
+    const percent = (delta / Math.abs(first.mean)) * 100;
+    const sign = delta >= 0 ? '+' : '−';
+    const mag = Math.abs(delta);
 
     const lines = [
-      `<div class="info-head">AIRS CO₂ · ${first.year}–${last.year}</div>`,
-      `<div class="info-figure">${CURRENT_READING.ppm.toFixed(1)} ppm ` +
-        `<span>latest, ${CURRENT_READING.label}</span></div>`,
-      `<div>+${delta.toFixed(0)} ppm since ${monthName(first)} · +${percent.toFixed(0)}%</div>`
+      `<div class="info-head">AIRS ${dataset.label} · ${first.year}–${last.year}</div>`,
+      `<div class="info-figure">${headline.toFixed(decimals)} ${unit} ` +
+        `<span>latest, ${asOf}</span></div>`,
+      `<div>${sign}${mag.toFixed(mag < 10 ? 1 : 0)} ${unit} since ${monthName(first)}` +
+        ` · ${sign}${Math.abs(percent).toFixed(percent < 10 ? 1 : 0)}%</div>`
     ];
 
     // Provenance is a separate block: on phones it relocates to a centred
@@ -140,14 +163,14 @@ export class Hud {
   setRange(min: number, max: number): void {
     this.colorMin = min;
     this.colorMax = max;
-    this.vminLabel.textContent = `${Math.round(min)} ppm`;
-    this.vmaxLabel.textContent = `${Math.round(max)} ppm`;
+    this.vminLabel.textContent = `${Math.round(min)} ${this.unit}`;
+    this.vmaxLabel.textContent = `${Math.round(max)} ${this.unit}`;
   }
 
   update(frame: PlaybackFrame): void {
     this.dateEl.textContent = `${frame.year} ${String(frame.month).padStart(2, '0')}`;
     const norm = normalizePpm(frame.meanPpm, this.colorMin, this.colorMax);
-    this.ppmEl.textContent = `${frame.meanPpm.toFixed(1)} ppm`;
+    this.ppmEl.textContent = `${frame.meanPpm.toFixed(this.decimals)} ${this.unit}`;
     this.ppmEl.style.color = normToCss(norm, this.paletteMix);
     if (this.sourceEl.textContent !== frame.source) {
       this.sourceEl.textContent = frame.source;

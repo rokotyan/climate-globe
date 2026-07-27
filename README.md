@@ -66,6 +66,7 @@ dragging:
 | **p** | stop / start (same as click) |
 | **f** | fullscreen |
 | **l** | faceted lighting on/off |
+| **1**–**4** | switch layer (or use the tabs under the globe) |
 | **h** | show the parameter panel |
 
 Touch has no hover, so it gets the conventional mapping: **drag** to orbit,
@@ -74,6 +75,23 @@ Touch has no hover, so it gets the conventional mapping: **drag** to orbit,
 `h` opens an authoring panel for displacement, texture limit, base radius,
 lighting, the colour ramp, tilt range and playback speed. It is a tool for
 tuning the look, not part of the piece, so it starts hidden.
+
+## Layers
+
+Four quantities share the globe — tabs below it, or number keys **1**–**4**:
+
+| | | |
+| --- | --- | --- |
+| **CO₂** | ppm | the subject: a slow, inexorable climb |
+| **CH₄** | ppb | methane, with a marked north–south split |
+| **CO** | ppb | carbon monoxide — biomass burning, huge seasonal plumes over Africa and the Amazon |
+| **Temp** | °C | near-surface temperature, and its enormous seasonal swing |
+
+CH₄, CO and temperature come from CLIMCAPS alone, which covers the whole
+2002–2026 span on its own — so unlike CO₂ they need no splicing and carry no
+resampled noise: these quantities vary far more across the globe than CO₂ does
+and have plenty of structure already. Each layer is ~3 MB and is fetched the
+first time you open it, then kept, so only CO₂ loads up front.
 
 ## The data
 

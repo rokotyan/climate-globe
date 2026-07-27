@@ -194,6 +194,49 @@ body.controls-open #info {
   display: none;
 }
 
+/* --- Layer tabs --------------------------------------------------------- */
+
+#layers {
+  position: absolute;
+  bottom: calc(var(--edge-bottom) + 46px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  pointer-events: auto;
+}
+
+.layer-tab {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  color: rgba(255, 255, 255, 0.55);
+  font: inherit;
+  font-size: var(--caption);
+  font-weight: 300;
+  letter-spacing: 0.03em;
+  padding: 4px 12px;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
+}
+
+.layer-tab:hover {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.layer-tab.active {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.layer-tab.loading {
+  opacity: 0.5;
+  cursor: progress;
+}
+
 /* --- Colorbar ----------------------------------------------------------- */
 
 #legend {
@@ -364,11 +407,12 @@ body.ready #loading {
      footer above the legend than as a narrow column beside the readout. Fixed
      rather than absolute so they anchor to the viewport instead of to the top
      row they belong to on wider screens. */
+  /* Clears both the legend and the layer tabs stacked above it */
   #provenance {
     position: fixed;
     left: var(--edge);
     right: var(--edge);
-    bottom: calc(var(--edge-bottom) + 54px);
+    bottom: calc(var(--edge-bottom) + 92px);
     text-align: center;
   }
 }

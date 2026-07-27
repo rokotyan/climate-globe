@@ -2,7 +2,7 @@ import type {CO2Globe} from './co2-globe';
 import type {Playback} from './playback';
 import type {Hud} from './hud';
 import type {Camera} from './camera';
-import type {CO2Dataset} from './data';
+import type {Dataset} from './data';
 
 /**
  * Live tweak panel: sliders bound directly to the render/playback parameters
@@ -28,7 +28,7 @@ export class Controls {
     globe: CO2Globe,
     playback: Playback,
     hud: Hud,
-    dataset: CO2Dataset,
+    dataset: Dataset,
     camera: Camera
   ) {
     // Size-changing sliders re-frame the camera so the globe cannot outgrow

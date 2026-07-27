@@ -1,7 +1,8 @@
 import {luma} from '@luma.gl/core';
 import {webgl2Adapter} from '@luma.gl/webgl';
 import {AnimationLoop} from '@luma.gl/engine';
-import {loadDatasetWithFallback} from './data';
+import {loadDataset, loadDatasetWithFallback, type Dataset, type LayerId} from './data';
+import {LayerSwitch} from './layer-switch';
 import {Camera} from './camera';
 import {Playback} from './playback';
 import {CO2Globe} from './co2-globe';
@@ -31,7 +32,22 @@ async function main(): Promise<void> {
   const controls = new Controls(globe, playback, hud, dataset, camera);
   camera.frameRadius(globe.maxRadius);
 
-  bindInput({canvas, camera, playback, globe, controls});
+  // Layers are fetched on first use and kept, so switching back is instant.
+  const loaded = new Map<LayerId, Dataset>([[dataset.id, dataset]]);
+  const layerSwitch = new LayerSwitch(document.getElementById('layers')!, async (id) => {
+    let next = loaded.get(id);
+    if (!next) {
+      next = await loadDataset(id);
+      loaded.set(id, next);
+    }
+    globe.setDataset(next);
+    playback.setDataset(next);
+    hud.setDataset(next);
+    camera.frameRadius(globe.maxRadius, false);
+    controls.refresh();
+  });
+
+  bindInput({canvas, camera, playback, globe, controls, layerSwitch});
 
   let lastTime: number | null = null;
 

@@ -2,6 +2,7 @@ import type {Camera} from './camera';
 import type {Playback} from './playback';
 import type {CO2Globe} from './co2-globe';
 import type {Controls} from './controls';
+import type {LayerSwitch} from './layer-switch';
 
 /**
  * Pointer, touch and keyboard bindings.
@@ -18,6 +19,7 @@ interface Targets {
   playback: Playback;
   globe: CO2Globe;
   controls: Controls;
+  layerSwitch: LayerSwitch;
 }
 
 const TAP_SLOP_PX = 12;
@@ -26,8 +28,9 @@ const TAP_MS = 400;
 const DRAG_ANGLE = 0.006;
 const DRAG_TILT = 0.005;
 
-export function bindInput({canvas, camera, playback, globe, controls}: Targets): void {
-  const overUi = (e: Event) => (e.target as HTMLElement | null)?.closest('#controls') !== null;
+export function bindInput({canvas, camera, playback, globe, controls, layerSwitch}: Targets): void {
+  const overUi = (e: Event) =>
+    (e.target as HTMLElement | null)?.closest('#controls, #layers') !== null;
 
   // --- Mouse: passive, no drag (the original's feel) ---
   let lastMouseX: number | null = null;
@@ -110,6 +113,10 @@ export function bindInput({canvas, camera, playback, globe, controls}: Targets):
   // --- Keyboard (mappings from the original) ---
   window.addEventListener('keydown', (e) => {
     if ((e.target as HTMLElement | null)?.tagName === 'INPUT') return;
+    if (e.key >= '1' && e.key <= '9') {
+      layerSwitch.selectByIndex(Number(e.key) - 1);
+      return;
+    }
     switch (e.key) {
       case 'p':
         playback.togglePlay();

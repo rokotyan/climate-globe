@@ -31,7 +31,7 @@ export interface MonthInfo {
   hi?: number;
 }
 
-export interface CO2Dataset {
+export interface Dataset {
   rows: number;
   cols: number;
   lat: number[];
@@ -46,7 +46,25 @@ export interface CO2Dataset {
   colorMin: number;
   colorMax: number;
   synthetic: boolean;
+
+  /** Which layer this is, and how to present its numbers */
+  id: LayerId;
+  label: string;
+  unit: string;
+  decimals: number;
+  /** Units of globe radius per unit of the quantity (CO2's original is 5/ppm) */
+  perUnit: number;
 }
+
+export type LayerId = 'co2' | 'ch4' | 'co' | 'temp';
+
+/** Order shown in the switcher; CO2 first, it is the piece's subject. */
+export const LAYERS: Array<{id: LayerId; label: string}> = [
+  {id: 'co2', label: 'CO₂'},
+  {id: 'ch4', label: 'CH₄'},
+  {id: 'co', label: 'CO'},
+  {id: 'temp', label: 'Temp'}
+];
 
 interface Metadata {
   rows: number;
@@ -58,19 +76,23 @@ interface Metadata {
   vmax: number;
   colorMin?: number;
   colorMax?: number;
+  unit?: string;
+  label?: string;
+  decimals?: number;
+  perUnit?: number;
   /** 'u8' = one byte per cell, scaled to each month's own lo/hi (current);
    *  'u16' = two bytes per cell, scaled to the record's vmin/vmax (legacy). */
   encoding: 'u8' | 'u16';
 }
 
-/** Load the preprocessed dataset (co2.json + co2.bin). Throws on any failure. */
-export async function loadDataset(baseUrl = 'data/'): Promise<CO2Dataset> {
-  const metaResp = await fetch(`${baseUrl}co2.json`);
-  if (!metaResp.ok) throw new Error(`co2.json: HTTP ${metaResp.status}`);
+/** Load one layer (`<id>.json` + `<id>.bin`). Throws on any failure. */
+export async function loadDataset(id: LayerId = 'co2', baseUrl = 'data/'): Promise<Dataset> {
+  const metaResp = await fetch(`${baseUrl}${id}.json`);
+  if (!metaResp.ok) throw new Error(`${id}.json: HTTP ${metaResp.status}`);
   const meta = (await metaResp.json()) as Metadata;
 
-  const binResp = await fetch(`${baseUrl}co2.bin`);
-  if (!binResp.ok) throw new Error(`co2.bin: HTTP ${binResp.status}`);
+  const binResp = await fetch(`${baseUrl}${id}.bin`);
+  if (!binResp.ok) throw new Error(`${id}.bin: HTTP ${binResp.status}`);
   const buffer = await binResp.arrayBuffer();
 
   const {vmin, vmax} = meta;
@@ -78,7 +100,7 @@ export async function loadDataset(baseUrl = 'data/'): Promise<CO2Dataset> {
   const expected = meta.months.length * cellsPerMonth;
   const raw = meta.encoding === 'u8' ? new Uint8Array(buffer) : new Uint16Array(buffer);
   if (raw.length !== expected) {
-    throw new Error(`co2.bin length ${raw.length}, expected ${expected}`);
+    throw new Error(`${id}.bin length ${raw.length}, expected ${expected}`);
   }
 
   const values = new Float32Array(raw.length);
@@ -110,7 +132,14 @@ export async function loadDataset(baseUrl = 'data/'): Promise<CO2Dataset> {
     vmax,
     colorMin: meta.colorMin ?? vmin,
     colorMax: meta.colorMax ?? vmax,
-    synthetic: false
+    synthetic: false,
+    id,
+    label: meta.label ?? LAYERS.find((l) => l.id === id)?.label ?? id,
+    unit: meta.unit ?? 'ppm',
+    decimals: meta.decimals ?? 1,
+    // CO2 keeps the original's 5 units of radius per ppm; other layers carry
+    // their own, chosen so each has a comparable amount of relief.
+    perUnit: meta.perUnit ?? 5
   };
 }
 
@@ -119,7 +148,7 @@ export async function loadDataset(baseUrl = 'data/'): Promise<CO2Dataset> {
  * plus a latitude-dependent seasonal cycle (strong in the NH) and slow
  * large-scale spatial variation.
  */
-export function generateSyntheticDataset(startYear = 2002, startMonth = 9, numMonths = 280): CO2Dataset {
+export function generateSyntheticDataset(startYear = 2002, startMonth = 9, numMonths = 280): Dataset {
   const rows = LAT.length;
   const cols = LON.length;
   const values = new Float32Array(numMonths * rows * cols);
@@ -173,12 +202,13 @@ export function generateSyntheticDataset(startYear = 2002, startMonth = 9, numMo
   return {
     rows, cols, lat: LAT, lon: LON, months, values,
     vmin, vmax, colorMin: vmin, colorMax: vmax,
-    synthetic: true
+    synthetic: true,
+    id: 'co2', label: 'CO₂', unit: 'ppm', decimals: 1, perUnit: 5
   };
 }
 
 /** Real data if available, synthetic when requested via ?synthetic or when fetch fails. */
-export async function loadDatasetWithFallback(): Promise<CO2Dataset> {
+export async function loadDatasetWithFallback(): Promise<Dataset> {
   const params = new URLSearchParams(window.location.search);
   if (!params.has('synthetic')) {
     try {

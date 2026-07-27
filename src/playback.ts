@@ -1,4 +1,4 @@
-import type {CO2Dataset} from './data';
+import type {Dataset} from './data';
 
 /**
  * Month playback clock. The original app's timeline cue (a 0.1s tween to the
@@ -30,7 +30,13 @@ export class Playback {
   /** Months played since load, never wrapped - drives the camera's orbit. */
   private played = 0;
 
-  constructor(private dataset: CO2Dataset) {}
+  constructor(private dataset: Dataset) {}
+
+  /** Swap layers without losing the position in the record. */
+  setDataset(dataset: Dataset): void {
+    this.dataset = dataset;
+    this.cursor = Math.min(this.cursor, dataset.months.length - 2);
+  }
 
   get playedMonths(): number {
     return this.played;
