@@ -13,7 +13,9 @@ The globe turns once per year of playback, so the seasonal breathing of the
 northern hemisphere comes back around to the same face each time. Click to stop
 it and twenty megacities fade in — HTML text, but projected through the same
 matrix as the mesh and sitting at whatever radius their cell currently has,
-fading out again as they cross the limb.
+fading out again as they cross the limb. On a phone-sized globe twenty names
+would collide, so ten of them — spread through longitude, so every face carries
+a few — keep their name and the rest keep just their dot.
 
 **[▶ Open the live version](https://rokotyan.github.io/airs-co2/)**
 

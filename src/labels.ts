@@ -38,7 +38,7 @@ export class Labels {
       const phi = ((180 - city.lon) * Math.PI) / 180;
 
       const el = document.createElement('div');
-      el.className = 'city';
+      el.className = city.major ? 'city' : 'city minor';
       el.innerHTML = `<span class="city-dot"></span><span class="city-name">${city.name}</span>`;
       root.appendChild(el);
 

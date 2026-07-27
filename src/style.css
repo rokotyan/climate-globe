@@ -123,10 +123,20 @@ body {
   flex: none;
 }
 
-@media (max-width: 620px) {
-  /* Too many names for a phone-sized globe; the dots still give the geography */
-  .city-name {
+/* Twenty names would collide on a phone-sized globe, so only the spread set
+   marked major in cities.ts is named; the rest keep just their dot. Fewer
+   names means each can afford to be a little larger.
+
+   Keyed on either axis, not just width: the globe is framed by the shorter one
+   (frameRadius against a 60 deg vertical FOV), so a phone held sideways is
+   860 x 390 and just as cramped as one held upright. */
+@media (max-width: 620px), (max-height: 620px) {
+  .city.minor .city-name {
     display: none;
+  }
+
+  .city-name {
+    font-size: 11px;
   }
 }
 
