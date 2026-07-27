@@ -213,8 +213,11 @@ export class CO2Globe {
  * nothing like one for temperature.
  */
 function defaultTexLimit(dataset: Dataset): number {
-  if (dataset.id === 'co2') return 7;
-  return (dataset.colorMax - dataset.colorMin) * 0.35;
+  if (dataset.id === 'co2') return 13;
+  // Chosen so every layer gets a comparable amount of relief (perUnit x this,
+  // ~60 units across all four); switching layers should read as a change of
+  // quantity, not of how rough the globe is.
+  return (dataset.colorMax - dataset.colorMin) * 0.65;
 }
 
 /** Same sphere mapping as CO2Mesh's constructor (theta from lat, phi from lon). */

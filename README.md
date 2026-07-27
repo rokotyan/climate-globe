@@ -9,8 +9,11 @@ grows: **+57 ppm since 2002, +15%**.
 
 ![The globe in April 2015 — 400 ppm, its surface furred with per-cell retrieval noise](docs/cover.png)
 
-The globe turns once per year of playback, so the seasonal breathing of the
-northern hemisphere comes back around to the same face each time. Click to stop
+It opens tilted 30° above the equator, looking down on the northern hemisphere
+where nearly all the seasonal swing is. The globe turns on its own slow clock,
+once every twelve seconds, while the months run past a year a second — two
+independent rates, so the spin stays contemplative however fast the record is
+read. Click to stop
 it and twenty megacities fade in — HTML text, but projected through the same
 matrix as the mesh and sitting at whatever radius their cell currently has,
 fading out again as they cross the limb. On a phone-sized globe twenty names

@@ -59,7 +59,9 @@ async function main(): Promise<void> {
       lastTime = time;
 
       playback.update(dt);
-      camera.setOrbit(playback.playedMonths);
+      // The spin runs on its own rate, but only while the piece does - a
+      // stopped globe is what the city labels are for.
+      if (playback.playing) camera.advanceOrbit(dt);
       camera.update(dt);
       const frame = playback.frame();
 

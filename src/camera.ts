@@ -7,14 +7,21 @@ import {Matrix4} from '@math.gl/core';
  * feel is framerate-independent.
  */
 
+/** Opening vertical orbit, in radians: 30 deg above the equator. */
+const START_TILT = (30 * Math.PI) / 180;
+
 export class Camera {
-  /**
-   * Orbit angle driven by playback - see `setOrbit`. The original spun at a
-   * fixed rate unrelated to the data; tying it to the clock instead makes one
-   * revolution one year, so the seasonal breathing of the northern hemisphere
-   * comes back around to the same face each time.
-   */
+  /** Accumulated auto-orbit angle - see `advanceOrbit`. */
   orbit = 0;
+  /**
+   * Auto-orbit rate, on the wall clock rather than the month cursor, so the
+   * spin and the playback rate can be dialled in against each other: a slow
+   * turn over fast months, or the reverse. (Tying one revolution to one year of
+   * data made the two inseparable - months could only go faster by spinning the
+   * globe faster.) The original's 0.01 rad per frame at 60 fps is 34 deg/sec;
+   * 30 is that, rounded. 0 stops the spin without stopping playback.
+   */
+  orbitDegreesPerSecond = 30;
   /** Pointer nudges, eased and added on top of the orbit. */
   angle = 0;
   angleDest = 0;
@@ -27,9 +34,14 @@ export class Camera {
    * which at typical distances capped the view at roughly 22 degrees above or
    * below the equator. Orbiting by angle instead lets the pointer carry the
    * camera right over the poles.
+   *
+   * Opens 30 deg above the equator, looking down towards the north pole - where
+   * the land is, and with it nearly all of the seasonal CO2 swing. A mouse
+   * overrides it on the first move, since onPointerMove sets the tilt absolutely
+   * from the pointer's height; on touch, drag is relative, so it holds.
    */
-  tilt = 0;
-  tiltDest = 0;
+  tilt = START_TILT;
+  tiltDest = START_TILT;
   /** Limit of the vertical orbit; stays short of 90 deg so `up` never degenerates. */
   maxTiltDegrees = 80;
 
@@ -48,13 +60,12 @@ export class Camera {
   private viewProjection = new Matrix4();
 
   /**
-   * Set the orbit from elapsed playback: one revolution per twelve months, so
-   * a year of data is a turn of the globe. Takes a monotonic month count
-   * rather than the looping cursor, so the record wrapping around does not
-   * snap the camera.
+   * Advance the auto-orbit by one frame's worth. Called only while playback
+   * runs, so stopping the piece stops the globe - which is what makes the city
+   * labels readable.
    */
-  setOrbit(monthsPlayed: number): void {
-    this.orbit = (monthsPlayed / 12) * Math.PI * 2;
+  advanceOrbit(dt: number): void {
+    this.orbit += ((this.orbitDegreesPerSecond * Math.PI) / 180) * dt;
   }
 
   update(dt: number): void {

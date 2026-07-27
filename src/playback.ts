@@ -20,15 +20,13 @@ export interface PlaybackFrame {
 export class Playback {
   playing = true;
   /**
-   * Playback rate. The original ran at ~10 months/sec with a slow, unrelated
-   * spin; now that a year of data is a turn of the globe, that rate would spin
-   * it every 1.2 seconds. 4 months/sec gives a 3 second turn and takes about
-   * 70 seconds over the whole record.
+   * Playback rate, free of the camera: the spin has its own rate on the wall
+   * clock, so this can be set for how the data should read rather than for how
+   * fast the globe should turn. 12 months/sec is a year a second, and covers
+   * the whole record in about 23.
    */
-  monthsPerSecond = 4;
+  monthsPerSecond = 12;
   private cursor = 0; // fractional month index
-  /** Months played since load, never wrapped - drives the camera's orbit. */
-  private played = 0;
 
   constructor(private dataset: Dataset) {}
 
@@ -38,16 +36,10 @@ export class Playback {
     this.cursor = Math.min(this.cursor, dataset.months.length - 2);
   }
 
-  get playedMonths(): number {
-    return this.played;
-  }
-
   update(dt: number): void {
     if (!this.playing) return;
     const n = this.dataset.months.length;
-    const advance = dt * this.monthsPerSecond;
-    this.cursor = (this.cursor + advance) % (n - 1);
-    this.played += advance;
+    this.cursor = (this.cursor + dt * this.monthsPerSecond) % (n - 1);
   }
 
   togglePlay(): void {
@@ -62,10 +54,7 @@ export class Playback {
   /** Advance exactly one month (original mouseDown behavior). */
   step(): void {
     const n = this.dataset.months.length;
-    const before = this.cursor;
     this.cursor = (Math.floor(this.cursor) + 1) % (n - 1);
-    // Carry the orbit along, so stepping turns the globe a month's worth too
-    this.played += 1 - (before - Math.floor(before));
   }
 
   frame(): PlaybackFrame {

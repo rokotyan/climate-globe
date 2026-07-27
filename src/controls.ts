@@ -65,7 +65,11 @@ export class Controls {
       {label: 'Tilt range (°)', min: 0, max: 88, step: 1, decimals: 0,
         get: () => camera.maxTiltDegrees, set: (v) => (camera.maxTiltDegrees = v)},
       {label: 'Speed (months/sec)', min: 0, max: 30, step: 1, decimals: 0,
-        get: () => playback.monthsPerSecond, set: (v) => (playback.monthsPerSecond = v)}
+        get: () => playback.monthsPerSecond, set: (v) => (playback.monthsPerSecond = v)},
+      // Independent of the month rate, so the two can be balanced by eye.
+      {label: 'Rotation (°/sec)', min: 0, max: 120, step: 1, decimals: 0,
+        get: () => camera.orbitDegreesPerSecond,
+        set: (v) => (camera.orbitDegreesPerSecond = v)}
     ];
 
     const defaults = specs.map((s) => s.get());
