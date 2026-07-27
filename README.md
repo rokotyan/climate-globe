@@ -13,8 +13,8 @@ It opens tilted 30° above the equator, looking down on the northern hemisphere
 where nearly all the seasonal swing is. The globe turns on its own slow clock,
 once every twelve seconds, while the months run past a year a second — two
 independent rates, so the spin stays contemplative however fast the record is
-read. Click to stop
-it and twenty megacities fade in — HTML text, but projected through the same
+read. Tap or click to stop it — the globe says so, under the layer tabs — and
+twenty megacities fade in: HTML text, but projected through the same
 matrix as the mesh and sitting at whatever radius their cell currently has,
 fading out again as they cross the limb. On a phone-sized globe twenty names
 would collide, so ten of them — spread through longitude, so every face carries
@@ -38,7 +38,13 @@ a few — keep their name and the rest keep just their dot.
 </table>
 
 The globe is smaller and green early on and larger and red at the end because
-both radius and colour follow the same value. The change in *surface texture*
+both radius and colour follow the same value. Only a fraction of the climb
+shows as growth, though: over 24 years CO₂'s mean moves far enough to swing the
+radius three times as far as any other layer's, which left the globe opening at
+under half its framed size. A separate gain holds the trend back to 0.4 without
+touching the fur, which shares the same displacement scale.
+
+The change in *surface texture*
 is a different story — see [Why the texture fades](#why-the-texture-fades).
 
 ## Origins
@@ -78,8 +84,9 @@ Touch has no hover, so it gets the conventional mapping: **drag** to orbit,
 **pinch** to zoom, **tap** to stop and start.
 
 `h` opens an authoring panel for displacement, texture limit, base radius,
-lighting, the colour ramp, tilt range and playback speed. It is a tool for
-tuning the look, not part of the piece, so it starts hidden.
+growth, lighting, the colour ramp, tilt range, playback speed and rotation
+rate. It is a tool for tuning the look, not part of the piece, so it starts
+hidden.
 
 ## Layers
 
@@ -145,11 +152,40 @@ random field, `--synth-noise` lifts the actual residual (`month − 3×3 smoothe
 month`) from a real AIRS month, matched by calendar month so the seasonal
 pattern of where the instrument was noisy lands where it belongs, and rescales
 it per latitude band to make up exactly the shortfall. Recipient months carry
-**+ resampled noise** in their label, in the header and in the source list
-above, so borrowed texture is never mistaken for measurement.
+**+ resampled noise** in the product name beside the readout, so borrowed
+texture is never mistaken for measurement.
 
 The underlying values are untouched — only the fine grain is added. Omit the
 flag to see the record exactly as measured.
+
+## Present-day figures
+
+The record ends months behind today, so the headline number comes from outside
+it — refreshed weekly by
+[`.github/workflows/refresh-current.yml`](.github/workflows/refresh-current.yml)
+and committed to `public/data/current.json`:
+
+| | Source | Cadence |
+| --- | --- | --- |
+| CO₂ | [NOAA GML](https://gml.noaa.gov/ccgg/trends/global.html) global marine surface | daily |
+| CH₄ | [NOAA GML](https://gml.noaa.gov/ccgg/trends/ch4_data.html) global marine surface | monthly |
+| Temp | [ERA5 2 m air temperature](https://climatereanalyzer.org/clim/t2_daily/) via Climate Reanalyzer | daily |
+| CO | none — see below | — |
+
+Fetched at build time rather than in the browser, so opening the piece never
+depends on those hosts being up, and the numbers are reviewable in git rather
+than appearing from nowhere. A source that is down leaves its committed value
+in place; a missing file falls back to a figure built into the bundle.
+
+**CO has no global-mean product anywhere.** NOAA measures it at 258 stations but
+publishes globally-averaged trends only for CO₂, CH₄, N₂O and SF₆, and CO's
+one-to-three-month lifetime is why — it never mixes out enough for a single
+global number to mean much. That layer reports its own last month instead.
+
+CO₂ and CH₄ carry the qualifier **surface** beside the figure, because those
+sources measure the marine boundary layer while the globe shows air some 8 km
+up, a few ppm lower. Temperature needs no such note: ERA5's 2 m air temperature
+is the same quantity as the layer's `surf_air_temp`.
 
 ## Running it
 

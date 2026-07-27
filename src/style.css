@@ -215,27 +215,24 @@ body {
   box-shadow: 0 0 5px rgba(0, 0, 0, 0.9);
 }
 
-.info-sources {
-  margin-top: 0.5em;
-  opacity: 0.85;
-  text-wrap: pretty;
-}
+/* --- Stop/start hint ----------------------------------------------------- */
 
-/* Keeps a product together with its years; the " · " separators between
-   products stay breakable, so the list still wraps between entries. */
-.info-sources .src {
+/* Sits above the layer tabs on every screen, where the product list used to be
+   on phones. The per-month product is still named beside the readout, so this
+   corner is free for the one thing a viewer needs told. */
+#hint {
+  position: absolute;
+  bottom: calc(var(--edge-bottom) + 88px);
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: var(--caption);
+  font-weight: 300;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
   white-space: nowrap;
-}
-
-.info-sources .src-years {
-  font-variant-numeric: tabular-nums;
-  opacity: 0.7;
-}
-
-.info-note {
-  margin-top: 0.6em;
   opacity: 0.75;
-  text-wrap: pretty;
+  transition: opacity 0.35s ease;
 }
 
 /* The parameter panel opens over the same corner, so the summary steps aside
@@ -452,19 +449,6 @@ body.ready #loading {
     white-space: normal;
   }
 
-  /* The headline figures stay in the top corner, but the product list and the
-     texture note are long prose - on a phone they read better as a centred
-     footer above the legend than as a narrow column beside the readout. Fixed
-     rather than absolute so they anchor to the viewport instead of to the top
-     row they belong to on wider screens. */
-  /* Clears both the legend and the layer tabs stacked above it */
-  #provenance {
-    position: fixed;
-    left: var(--edge);
-    right: var(--edge);
-    bottom: calc(var(--edge-bottom) + 92px);
-    text-align: center;
-  }
 }
 
 /* Short viewports (landscape phones) have no room for the summary. */

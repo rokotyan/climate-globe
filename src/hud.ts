@@ -2,59 +2,12 @@ import type {Dataset, MonthInfo} from './data';
 import type {PlaybackFrame} from './playback';
 import {normToCss, normalizePpm, type PaletteId} from './color';
 import {Sparkline} from './sparkline';
+import {loadCurrent, type CurrentReadings} from './current';
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-/**
- * Present-day global CO2, quoted for the headline figure.
- *
- * The satellite record runs several months behind, so its last month is not
- * "now" - this is an external reference value and has to be updated by hand.
- */
-const CURRENT_READING = {ppm: 429.0, label: 'Jul 2026'};
-
 function monthName(m: MonthInfo): string {
   return `${MONTH_NAMES[m.month - 1]} ${m.year}`;
-}
-
-/** Contiguous run of months from one product, for the provenance line. */
-function sourceSpans(dataset: Dataset): Array<{label: string; from: number; to: number}> {
-  const spans: Array<{label: string; from: number; to: number}> = [];
-  for (const m of dataset.months) {
-    const label = m.source;
-    if (!label) continue;
-    const last = spans[spans.length - 1];
-    if (last && last.label === label) last.to = m.year;
-    else spans.push({label, from: m.year, to: m.year});
-  }
-  return spans;
-}
-
-/**
- * If the record hands over to a product with markedly less per-cell texture,
- * say so and when - otherwise the surface simply appears to go smooth for no
- * visible reason. Returns null when the texture holds up throughout.
- */
-function granularityNote(dataset: Dataset): string | null {
-  const months = dataset.months;
-  const sources = [...new Set(months.map((m) => m.source).filter(Boolean))];
-  if (sources.length < 2) return null;
-
-  const lastSource = sources[sources.length - 1];
-  const start = months.findIndex((m) => m.source === lastSource);
-  if (start <= 0) return null;
-
-  const mean = (list: MonthInfo[]) =>
-    list.reduce((sum, m) => sum + (m.fur ?? 0), 0) / Math.max(1, list.length);
-  const before = mean(months.slice(0, start));
-  const after = mean(months.slice(start));
-  if (!(after < before * 0.8)) return null;
-
-  return (
-    `Smoother from ${monthName(months[start])}: the record moves to ${lastSource}, ` +
-    `whose quality screening strips the per-cell retrieval noise that textures the ` +
-    `earlier years (${after.toFixed(1)} vs ${before.toFixed(1)} ppm cell-to-cell).`
-  );
 }
 
 /**
@@ -63,9 +16,11 @@ function granularityNote(dataset: Dataset): string | null {
  * commented-out HUD from the original draw() (EarthquakeApp.cpp).
  */
 export class Hud {
+  private dataset: Dataset;
   private dateEl = document.getElementById('date') as HTMLDivElement;
   private ppmEl = document.getElementById('ppm') as HTMLDivElement;
   private sourceEl = document.getElementById('source') as HTMLDivElement;
+  private hintEl = document.getElementById('hint');
   private vminLabel = document.getElementById('vmin-label')!;
   private vmaxLabel = document.getElementById('vmax-label')!;
   private colorMin: number;
@@ -78,7 +33,15 @@ export class Hud {
 
   private paletteMix = 1;
 
+  /**
+   * Present-day figures from outside the record, keyed by layer - see
+   * src/current.ts. Empty until the fetch lands, which is why renderInfo is
+   * re-run when it does.
+   */
+  private current: CurrentReadings = {};
+
   constructor(dataset: Dataset) {
+    this.dataset = dataset;
     this.colorMin = dataset.colorMin;
     this.colorMax = dataset.colorMax;
     this.unit = dataset.unit;
@@ -87,10 +50,18 @@ export class Hud {
     this.drawColorbar();
     this.setRange(dataset.colorMin, dataset.colorMax);
     this.renderInfo(dataset);
+
+    // Fetched rather than awaited: the headline shows the record's own last
+    // month for the moment it takes, then redraws with the present-day figure.
+    void loadCurrent().then((current) => {
+      this.current = current;
+      this.renderInfo(this.dataset);
+    });
   }
 
   /** Point the readout, colorbar and summary at another layer. */
   setDataset(dataset: Dataset): void {
+    this.dataset = dataset;
     this.unit = dataset.unit;
     this.decimals = dataset.decimals;
     this.palette = dataset.palette;
@@ -114,50 +85,37 @@ export class Hud {
     const last = months[months.length - 1];
     const {unit, decimals} = dataset;
 
-    // CO2 quotes a present-day figure from outside the record, since the
-    // satellite products lag by months. The other layers have no such
-    // reference, so they report their own last month.
-    const isCO2 = dataset.id === 'co2';
-    const headline = isCO2 ? CURRENT_READING.ppm : last.mean;
-    const asOf = isCO2 ? CURRENT_READING.label : monthName(last);
+    // A present-day figure from outside the record where one exists, since the
+    // satellite products lag by months. CO has no global-mean source at all, so
+    // it falls back to reporting its own last month.
+    const reading = this.current[dataset.id];
+    const headline = reading ? reading.value : last.mean;
+    const asOf = reading ? reading.asOf : monthName(last);
+    const note = reading ? reading.note : 'latest';
 
     const lines = [
       `<div class="info-head">AIRS ${dataset.label} · ${first.year}–${last.year}</div>`,
       `<div class="info-figure">${headline.toFixed(decimals)} ${unit} ` +
-        `<span>latest, ${asOf}</span></div>`,
+        `<span>${note}, ${asOf}</span></div>`,
       // Where the climb used to be stated ("+57 ppm since Sep 2002 · +15%"),
       // the sparkline shows it instead - and marks the month on screen.
       `<div class="info-spark" id="spark"></div>`
     ];
 
-    // Provenance is a separate block: on phones it relocates to a centred
-    // footer while the headline figures stay in the top corner.
-    const provenance: string[] = [];
-    const spans = sourceSpans(dataset);
-    if (spans.length > 1) {
-      // Each product and its years are one unwrappable unit: a plain space
-      // (and the en dash, and the hyphen in "IR-only") are all break
-      // opportunities, so the years could otherwise end up on their own line.
-      provenance.push(
-        `<div class="info-sources">${spans
-          .map(
-            (s) =>
-              `<span class="src">${s.label}&nbsp;` +
-              `<span class="src-years">${s.from}–${String(s.to).slice(2)}</span></span>`
-          )
-          .join(' · ')}</div>`
-      );
-    }
-    const note = granularityNote(dataset);
-    if (note) provenance.push(`<div class="info-note">${note}</div>`);
-    if (provenance.length) {
-      lines.push(`<div id="provenance">${provenance.join('')}</div>`);
-    }
-
     el.innerHTML = lines.join('');
     // After the innerHTML above, which would otherwise discard its DOM.
     const host = document.getElementById('spark');
     this.sparkline = host ? new Sparkline(host, dataset) : null;
+  }
+
+  /**
+   * The stop/start hint tells the viewer what to do, so it has to say the thing
+   * that is actually available - left on "TAP TO PAUSE" while stopped it would
+   * be plainly wrong.
+   */
+  setPlaying(playing: boolean): void {
+    const text = playing ? 'TAP TO PAUSE' : 'TAP TO PLAY';
+    if (this.hintEl && this.hintEl.textContent !== text) this.hintEl.textContent = text;
   }
 
   /** Keep the colorbar and readout tint on the same ramp as the globe. */

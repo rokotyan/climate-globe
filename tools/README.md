@@ -177,3 +177,29 @@ also openly mirrored on CEDA (no account):
   0.134 ppm and the per-source fur is unchanged to three decimals, while the
   payload halves against a global uint16. Never clip to percentiles: that
   would flatten the extreme cells that carry the fur.
+
+## fetch-current.mjs
+
+Refreshes `public/data/current.json`, the present-day global figures behind the
+HUD's headline number. Plain Node, no dependencies:
+
+```sh
+node fetch-current.mjs
+```
+
+Sources — the only keyless, CORS-clean, globally-averaged ones found:
+
+| | Source | Cadence |
+| --- | --- | --- |
+| CO₂ | NOAA GML `co2_trend_gl.txt` (smoothed daily) | daily |
+| CH₄ | NOAA GML `ch4_mm_gl.txt` | monthly |
+| Temp | ERA5 2 m air temperature via Climate Reanalyzer | daily |
+
+**CO is deliberately absent.** NOAA measures it at 258 stations but publishes no
+global mean, and a layer with no entry falls back to the record's own last
+month.
+
+Run weekly by `.github/workflows/refresh-current.yml`, which commits the result.
+It never fails a build: values are range-checked (a truncated response or error
+page parses to nonsense rather than erroring), and a source that is down leaves
+its committed value in place.

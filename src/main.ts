@@ -74,6 +74,7 @@ async function main(): Promise<void> {
       // They belong to the paused, readable state - keep positioning them
       // while they fade so they never fade out mid-drift.
       labels.setVisible(!playback.playing);
+      hud.setPlaying(playback.playing);
       labels.update(camera, globe, frame, viewProj, canvas.clientWidth, canvas.clientHeight);
       hud.update(frame);
     }
