@@ -1,6 +1,7 @@
 import type {Dataset, MonthInfo} from './data';
 import type {PlaybackFrame} from './playback';
 import {normToCss, normalizePpm, type PaletteId} from './color';
+import {Sparkline} from './sparkline';
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -72,6 +73,8 @@ export class Hud {
   private unit: string;
   private decimals: number;
   private palette: PaletteId = 'default';
+  /** Rebuilt per layer by renderInfo, since each has its own curve and scale. */
+  private sparkline: Sparkline | null = null;
 
   private paletteMix = 1;
 
@@ -97,10 +100,10 @@ export class Hud {
   }
 
   /**
-   * Standing summary of what the record shows: where CO2 is now, how far it
-   * has climbed since the piece begins, and - if the record changes product
-   * partway - why the surface loses its fine texture when it does. Derived
-   * from the data so it stays true whenever the dataset is regenerated.
+   * Standing summary of what the record shows: where CO2 is now, the shape of
+   * how it got there, and - if the record changes product partway - why the
+   * surface loses its fine texture when it does. Derived from the data so it
+   * stays true whenever the dataset is regenerated.
    */
   private renderInfo(dataset: Dataset): void {
     const el = document.getElementById('info');
@@ -117,17 +120,14 @@ export class Hud {
     const isCO2 = dataset.id === 'co2';
     const headline = isCO2 ? CURRENT_READING.ppm : last.mean;
     const asOf = isCO2 ? CURRENT_READING.label : monthName(last);
-    const delta = headline - first.mean;
-    const percent = (delta / Math.abs(first.mean)) * 100;
-    const sign = delta >= 0 ? '+' : '−';
-    const mag = Math.abs(delta);
 
     const lines = [
       `<div class="info-head">AIRS ${dataset.label} · ${first.year}–${last.year}</div>`,
       `<div class="info-figure">${headline.toFixed(decimals)} ${unit} ` +
         `<span>latest, ${asOf}</span></div>`,
-      `<div>${sign}${mag.toFixed(mag < 10 ? 1 : 0)} ${unit} since ${monthName(first)}` +
-        ` · ${sign}${Math.abs(percent).toFixed(percent < 10 ? 1 : 0)}%</div>`
+      // Where the climb used to be stated ("+57 ppm since Sep 2002 · +15%"),
+      // the sparkline shows it instead - and marks the month on screen.
+      `<div class="info-spark" id="spark"></div>`
     ];
 
     // Provenance is a separate block: on phones it relocates to a centred
@@ -155,6 +155,9 @@ export class Hud {
     }
 
     el.innerHTML = lines.join('');
+    // After the innerHTML above, which would otherwise discard its DOM.
+    const host = document.getElementById('spark');
+    this.sparkline = host ? new Sparkline(host, dataset) : null;
   }
 
   /** Keep the colorbar and readout tint on the same ramp as the globe. */
@@ -174,8 +177,12 @@ export class Hud {
   update(frame: PlaybackFrame): void {
     this.dateEl.textContent = `${frame.year} ${String(frame.month).padStart(2, '0')}`;
     const norm = normalizePpm(frame.meanPpm, this.colorMin, this.colorMax);
+    const color = normToCss(norm, this.paletteMix, this.palette);
     this.ppmEl.textContent = `${frame.meanPpm.toFixed(this.decimals)} ${this.unit}`;
-    this.ppmEl.style.color = normToCss(norm, this.paletteMix, this.palette);
+    this.ppmEl.style.color = color;
+    // Same tint as the readout, so the marker, the number and the globe all
+    // report the same value in the same colour.
+    this.sparkline?.update(frame, color);
     if (this.sourceEl.textContent !== frame.source) {
       this.sourceEl.textContent = frame.source;
     }
