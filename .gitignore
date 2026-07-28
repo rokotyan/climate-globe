@@ -4,6 +4,10 @@ node_modules/
 # Build output
 dist/
 
+# Recorded video frames — hundreds of MB of PNGs per run.
+# Regenerate with tools/record.mjs; never commit them.
+out/
+
 # Python environment for the data pipeline
 tools/.venv/
 __pycache__/

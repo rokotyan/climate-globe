@@ -95,6 +95,48 @@ async function main(): Promise<void> {
     playback.seek(month);
   };
 
+  /**
+   * `?capture` hands the clock to tools/record.mjs.
+   *
+   * Every source of self-driven motion is stopped, so a frame is a pure
+   * function of the state the recorder sets and can be reproduced exactly:
+   * the month cursor is held, the orbit rate is zeroed and set outright per
+   * frame, and the camera's easing is collapsed so nothing glides in over the
+   * opening seconds. `scrubbing` rather than `playing` does the holding, so the
+   * city labels stay hidden as they would during playback.
+   */
+  if (params.has('capture')) {
+    document.body.classList.add('capturing');
+    playback.scrubbing = true;
+    camera.orbitDegreesPerSecond = 0;
+    const settle = () => {
+      camera.dist = camera.distDest;
+      camera.angle = camera.angleDest;
+      camera.tilt = camera.tiltDest;
+    };
+    settle();
+
+    (window as {__capture?: unknown}).__capture = {
+      months: dataset.months.length,
+      layers: LAYERS.map((l) => l.id),
+      async setLayer(id: LayerId) {
+        await layerSwitch.select(id);
+        // frameRadius eases by default; a recording wants it there at once.
+        settle();
+      },
+      set(month: number, orbitDegrees: number) {
+        playback.seek(month);
+        camera.orbit = (orbitDegrees * Math.PI) / 180;
+      },
+      /** Resolves once a frame carrying the latest state has been presented. */
+      drawn() {
+        return new Promise<void>((resolve) =>
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+        );
+      }
+    };
+  }
+
   bindInput({canvas, camera, playback, globe, controls, layerSwitch, bloom});
 
   let lastTime: number | null = null;
