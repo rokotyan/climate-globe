@@ -268,6 +268,42 @@ about 0.13 ppm per step — an order of magnitude below the data's own noise, an
 half the size of a global `uint16`. The whole deployed site is **2.2 MB** over
 the wire, of which the app itself is 82 kB.
 
+## Recording a video
+
+`tools/record.mjs` writes PNG frames, one directory per layer, for ffmpeg to
+assemble — sized for a vertical 9:16 post by default.
+
+```sh
+node tools/record.mjs                    # all four layers, whole record each
+node tools/record.mjs --layers co2 --fps 60
+node tools/record.mjs --smoke 4          # four frames per layer, to check
+```
+
+It screenshots the **page**, not the canvas: the HUD is DOM overlaid on WebGL,
+so `canvas.captureStream()` would hand back a bare globe on black.
+
+Frames are deterministic. `?capture` stops everything that moves on its own —
+the month cursor is held, the orbit rate zeroed, the camera's easing collapsed —
+and the recorder sets the month and angle explicitly per frame. Wall-clock speed
+is therefore irrelevant: a slow machine produces the same frames as a fast one,
+with none dropped or duplicated. It runs headed on purpose, since headless
+Chrome falls back to SwiftShader for WebGL.
+
+Two defaults worth knowing. It renders **540 × 960 at 2×**, not 1080 × 1920 at
+1×: 540 is inside the 620px breakpoint, so the page lays out as it does on a
+phone while the file is still a true 1080 × 1920 — at 1080 CSS you would get the
+desktop layout stretched into a phone shape. And at 12 months/sec the 280-month
+record runs 23 seconds, which fits a Reel whole.
+
+```sh
+ffmpeg -framerate 30 -i out/frames/co2/%05d.png \
+  -c:v libx264 -pix_fmt yuv420p -crf 18 -preset slow \
+  -movflags +faststart co2.mp4
+```
+
+`yuv420p` is not optional — Instagram mangles other pixel formats. Frames land
+in `out/`, which is gitignored; a full run is roughly 700 MB.
+
 ## Deployment
 
 Pushing to `main` builds and publishes to GitHub Pages via

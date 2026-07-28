@@ -553,3 +553,9 @@ body.ready #loading {
     padding-top: 0;
   }
 }
+
+/* Recording (?capture): the stop/start prompt is an affordance for a viewer
+   with a pointer, and has no business in a video file. */
+body.capturing #hint {
+  display: none;
+}

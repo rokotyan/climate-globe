@@ -15,6 +15,7 @@
     "@math.gl/core": "^4.1.0"
   },
   "devDependencies": {
+    "playwright-core": "^1.62.0",
     "typescript": "^5.5.4",
     "vite": "^5.4.11"
   }
