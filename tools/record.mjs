@@ -91,7 +91,13 @@ if (!layers.length) {
 // The record ends one month short: the cursor interpolates between a month and
 // the next, so the last whole frame sits on months - 2.
 const lastMonth = info.months - 2;
-const totalFrames = SMOKE || Math.ceil((lastMonth / MONTHS_PER_SECOND) * FPS);
+/* +1 so the final frame lands exactly on lastMonth rather than one step short.
+   ceil() alone gives 695 frames for a 278-month run at 12/sec and 30fps, whose
+   last index is 694 - cursor 277.6, which still displays November 2025 and
+   never reaches the end of the record. The piece is about arriving at the
+   present, so the last frame should be the present. */
+const totalFrames =
+  SMOKE || Math.floor((lastMonth / MONTHS_PER_SECOND) * FPS) + 1;
 
 console.log(
   `${layers.length} layer(s) x ${totalFrames} frames at ${FPS}fps ` +
