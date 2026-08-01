@@ -277,7 +277,20 @@ assemble — sized for a vertical 9:16 post by default.
 node tools/record.mjs                    # all four layers, whole record each
 node tools/record.mjs --layers co2 --fps 60
 node tools/record.mjs --smoke 4          # four frames per layer, to check
+node tools/record.mjs --safe none        # HUD out to the frame edges
 ```
+
+By default it lays the HUD out for **Instagram's safe area**, which two separate
+things eat into. Reels fills the screen, so on a 19.5:9 phone a 1080 × 1920
+video is scaled ~22% to cover the height and loses about 120px off each side —
+where the HUD would otherwise sit. And Instagram's own chrome covers roughly the
+top 10% and bottom 18%: nav bar above, username, caption, audio and action rail
+below. `--safe none` turns this off for anywhere that isn't a phone feed.
+
+The insets go on the three CSS variables the whole HUD is positioned from, so
+one change moves everything. The camera also pulls back 18%, because the globe
+stays centred on the *viewport* rather than on the inset box — without that the
+tabs and colorbar end up sitting on it.
 
 It screenshots the **page**, not the canvas: the HUD is DOM overlaid on WebGL,
 so `canvas.captureStream()` would hand back a bare globe on black.

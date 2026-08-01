@@ -107,6 +107,14 @@ async function main(): Promise<void> {
    */
   if (params.has('capture')) {
     document.body.classList.add('capturing');
+    // ?safe=reels keeps the HUD clear of Instagram's chrome and its edge crop.
+    if ((params.get('safe') ?? 'reels') === 'reels') {
+      document.body.classList.add('safe-reels');
+      // Insetting the HUD alone would leave the tabs and colorbar sitting on
+      // the globe, which stays centred on the viewport. Pull the camera back.
+      camera.frameScale = 1.18;
+      camera.frameRadius(globe.maxRadius);
+    }
     playback.scrubbing = true;
     camera.orbitDegreesPerSecond = 0;
     const settle = () => {

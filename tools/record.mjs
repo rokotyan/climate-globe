@@ -18,6 +18,7 @@
  *   node tools/record.mjs                        # all four layers
  *   node tools/record.mjs --layers co2 --fps 60
  *   node tools/record.mjs --smoke 4              # 4 frames per layer, to check
+ *   node tools/record.mjs --safe none            # HUD out to the edges
  *
  * Then, per directory:
  *   ffmpeg -framerate 30 -i out/frames/co2/%05d.png \
@@ -70,7 +71,8 @@ const page = await browser.newPage({
   deviceScaleFactor: SCALE
 });
 
-await page.goto(`${URL_BASE}?capture`, {waitUntil: 'load'});
+const SAFE = arg('safe', 'reels'); // 'reels' | 'none'
+await page.goto(`${URL_BASE}?capture&safe=${SAFE}`, {waitUntil: 'load'});
 await page.waitForFunction(() => Boolean(window.__capture), null, {timeout: 60000});
 await page.waitForFunction(() => document.body.classList.contains('ready'), null, {
   timeout: 60000
