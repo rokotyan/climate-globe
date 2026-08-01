@@ -559,3 +559,26 @@ body.ready #loading {
 body.capturing #hint {
   display: none;
 }
+
+/* Instagram Reels safe area (?capture&safe=reels).
+ *
+ * Two different things eat the frame. Reels fills the screen, so on a 19.5:9
+ * phone a 1080x1920 video is scaled ~22% to cover the height and loses about
+ * 120px off each side. And Instagram's own chrome sits on top: the nav bar
+ * across the top, and the username, caption, audio ticker and action rail
+ * across the bottom and lower right.
+ *
+ * The whole HUD is positioned from these three variables, so insetting them
+ * moves everything at once - no per-element nudging. Values are CSS px at the
+ * recorder's 540x960; double them for the 1080x1920 file. The globe needs no
+ * inset: it is centred and about 660px wide in the output, so it clears both
+ * the side crop and the chrome on its own.
+ */
+body.safe-reels {
+  /* Measured off a real Reel: its chrome covers the top ~10% and the bottom
+     ~18% of the frame, and the side crop is ~120 device px. These are CSS px at
+     540x960, so double them for the 1080x1920 output. */
+  --edge: 70px;
+  --edge-top: 110px;
+  --edge-bottom: 180px;
+}

@@ -54,6 +54,12 @@ export class Camera {
 
   minDist = 260;
   maxDist = 3000;
+  /**
+   * Multiplies the framing distance. 1 on screen; recording pushes it out so
+   * the globe clears a HUD that has been inset for a platform's safe area, the
+   * globe being centred on the viewport rather than on that inset box.
+   */
+  frameScale = 1;
 
   private view = new Matrix4();
   private projection = new Matrix4();
@@ -138,7 +144,7 @@ export class Camera {
   frameRadius(maxRadius: number, snap = true): void {
     // 2.3x leaves the biggest month filling ~75% of the short axis. The globe
     // grows with the CO2 trend, so early months sit well inside this.
-    this.distDest = maxRadius * 2.3;
+    this.distDest = maxRadius * 2.3 * this.frameScale;
     this.minDist = maxRadius * 1.05;
     this.maxDist = maxRadius * 12;
     // snap=false leaves the current distance alone, so the normal easing
