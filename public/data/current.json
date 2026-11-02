@@ -1,11 +1,11 @@
 {
-  "fetched": "2026-10-26",
+  "fetched": "2026-11-02",
   "layers": {
     "co2": {
-      "value": 426.8,
-      "trend": 428.1,
+      "value": 427.6,
+      "trend": 428.2,
       "unit": "ppm",
-      "asOf": "24 Oct 2026",
+      "asOf": "1 Nov 2026",
       "note": "surface",
       "source": "NOAA GML global marine surface",
       "url": "https://gml.noaa.gov/ccgg/trends/global.html"
@@ -20,9 +20,9 @@
       "url": "https://gml.noaa.gov/ccgg/trends/ch4_data.html"
     },
     "temp": {
-      "value": 15.2,
+      "value": 14.9,
       "unit": "°C",
-      "asOf": "20 Oct 2026",
+      "asOf": "27 Oct 2026",
       "note": "latest",
       "source": "ERA5 daily 2 m air temperature, via Climate Reanalyzer",
       "url": "https://climatereanalyzer.org/clim/t2_daily/"
