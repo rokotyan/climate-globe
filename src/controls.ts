@@ -158,7 +158,7 @@ export class Controls {
 
     const hint = document.createElement('div');
     hint.className = 'controls-hint';
-    hint.textContent = 'h hide · p pause · b bloom · l light · → step · wheel zoom';
+    hint.textContent = 'h hide · p pause · b bloom · l light · t theme · → step · wheel zoom';
     body.appendChild(hint);
   }
 

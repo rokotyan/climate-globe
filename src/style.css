@@ -14,8 +14,67 @@
      separate magic numbers. */
   --caption-stack: 0px;
   --panel-text: clamp(11px, 1.4vmin, 14px);
+
+  /* Colour. Everything below is the dark theme, which is what the piece was
+     made for; the light block that follows redefines only these. The ramp the
+     globe is coloured with is not a theme and stays the same on both - colour
+     is data here, and a theme is not allowed to touch it.
+
+     --bg is also read back by src/theme.ts for the WebGL clear colour, so it
+     must stay a plain hex. */
+  --bg: #000000;
   --ink: #f2f2f2;
+  --ink-strong: #ffffff;
   --ink-dim: #9a9a9a;
+  --panel-ink: #d8d8d8;
+  --accent: #99aadd;
+  /* Text sits over the globe, which can be any colour on the ramp; the halo is
+     what keeps it legible against a red that matches it in brightness. */
+  --halo: rgba(0, 0, 0, 0.8);
+  --halo-dense: rgba(0, 0, 0, 0.95);
+  --line: rgba(255, 255, 255, 0.14);
+  --line-soft: rgba(255, 255, 255, 0.22);
+  --line-strong: rgba(255, 255, 255, 0.5);
+  --surface: rgba(0, 0, 0, 0.45);
+  --surface-panel: rgba(0, 0, 0, 0.55);
+  --surface-active: rgba(255, 255, 255, 0.12);
+  --surface-button: rgba(255, 255, 255, 0.1);
+  --tab-ink: rgba(255, 255, 255, 0.55);
+  --tab-ink-hover: rgba(255, 255, 255, 0.85);
+  --label-ink: rgba(255, 255, 255, 0.92);
+  --label-dot: rgba(255, 255, 255, 0.95);
+  --spark-fill: rgba(255, 255, 255, 0.07);
+  --spark-stroke: rgba(255, 255, 255, 0.4);
+  color-scheme: dark;
+}
+
+/* Light. A warm off-white rather than #fff: the ramp's yellows and bright
+   greens are already near white in luminance, and on pure white the readout
+   would vanish for a stretch of every year. Set by src/theme.ts from the URL,
+   a saved choice, or the OS preference. */
+:root[data-theme='light'] {
+  --bg: #f2f1ec;
+  --ink: #1b1b1a;
+  --ink-strong: #000000;
+  --ink-dim: #6b6b67;
+  --panel-ink: #333331;
+  --accent: #2f6fb5;
+  --halo: rgba(242, 241, 236, 0.85);
+  --halo-dense: rgba(242, 241, 236, 0.95);
+  --line: rgba(0, 0, 0, 0.14);
+  --line-soft: rgba(0, 0, 0, 0.22);
+  --line-strong: rgba(0, 0, 0, 0.45);
+  --surface: rgba(255, 255, 255, 0.55);
+  --surface-panel: rgba(255, 255, 255, 0.72);
+  --surface-active: rgba(0, 0, 0, 0.08);
+  --surface-button: rgba(0, 0, 0, 0.08);
+  --tab-ink: rgba(0, 0, 0, 0.5);
+  --tab-ink-hover: rgba(0, 0, 0, 0.8);
+  --label-ink: rgba(0, 0, 0, 0.85);
+  --label-dot: rgba(0, 0, 0, 0.8);
+  --spark-fill: rgba(0, 0, 0, 0.06);
+  --spark-stroke: rgba(0, 0, 0, 0.35);
+  color-scheme: light;
 }
 
 html,
@@ -25,7 +84,7 @@ body {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: #000;
+  background: var(--bg);
   font-family: 'Source Sans Pro', 'Source Sans 3', -apple-system, 'Helvetica Neue', sans-serif;
   -webkit-text-size-adjust: 100%;
 }
@@ -45,7 +104,7 @@ body {
   inset: 0;
   pointer-events: none;
   color: var(--ink);
-  text-shadow: 0 0 8px rgba(0, 0, 0, 0.8);
+  text-shadow: 0 0 8px var(--halo);
 }
 
 /* --- Top row: summary left, readout right ------------------------------- */
@@ -131,8 +190,8 @@ body {
   font-size: clamp(9px, 1.15vmin, 12px);
   font-weight: 300;
   letter-spacing: 0.04em;
-  color: rgba(255, 255, 255, 0.92);
-  text-shadow: 0 0 6px rgba(0, 0, 0, 0.9);
+  color: var(--label-ink);
+  text-shadow: 0 0 6px var(--halo-dense);
   will-change: transform, opacity;
 }
 
@@ -140,8 +199,8 @@ body {
   width: 3px;
   height: 3px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.95);
-  box-shadow: 0 0 4px rgba(0, 0, 0, 0.9);
+  background: var(--label-dot);
+  box-shadow: 0 0 4px var(--halo-dense);
   flex: none;
 }
 
@@ -228,12 +287,12 @@ body {
 }
 
 .spark-area {
-  fill: rgba(255, 255, 255, 0.07);
+  fill: var(--spark-fill);
 }
 
 .spark-line {
   fill: none;
-  stroke: rgba(255, 255, 255, 0.4);
+  stroke: var(--spark-stroke);
   stroke-width: 1;
   stroke-linejoin: round;
 }
@@ -247,7 +306,7 @@ body {
   margin: -3px 0 0 -3px;
   border-radius: 50%;
   background: var(--ink);
-  box-shadow: 0 0 5px rgba(0, 0, 0, 0.9);
+  box-shadow: 0 0 5px var(--halo-dense);
 }
 
 /* --- Stop/start hint ----------------------------------------------------- */
@@ -270,7 +329,7 @@ body {
   transition: opacity 0.35s ease;
   /* Reads over the globe, which now reaches this far down and can be a bright
      red behind it - the HUD's shared shadow alone leaves it illegible. */
-  text-shadow: 0 0 3px rgba(0, 0, 0, 0.95), 0 0 10px rgba(0, 0, 0, 0.85);
+  text-shadow: 0 0 3px var(--halo-dense), 0 0 10px var(--halo);
 }
 
 /* The parameter panel opens over the same corner, so the summary steps aside
@@ -279,14 +338,18 @@ body.controls-open #info {
   display: none;
 }
 
-/* --- Layer tabs --------------------------------------------------------- */
+/* --- Layer tabs and theme toggle ---------------------------------------- */
 
-#layers {
+/* The tabs and the theme toggle share one row under the globe. The toggle
+   hangs off the right end, and ::before is a blank of the same size on the
+   left, so the tabs themselves stay centred on the colorbar below them. */
+#dock {
   position: absolute;
   bottom: calc(var(--edge-bottom) + var(--caption-stack) + 46px);
   left: 50%;
   transform: translateX(-50%);
   display: flex;
+  align-items: center;
   gap: 6px;
   /* Generous padding, pulled back out with a matching negative margin: the
      tabs stay where they look, but a near-miss lands here rather than on the
@@ -294,17 +357,32 @@ body.controls-open #info {
   padding: 14px 16px;
   margin: -14px -16px;
   pointer-events: auto;
+  font-size: var(--caption);
+  /* Fixed rather than 'normal', so the toggle's size below can be written in
+     terms of exactly the height the tabs come out at. */
+  line-height: 1.3;
+  --tab-height: calc(1.3em + 10px);
 }
 
-.layer-tab {
-  border: 1px solid rgba(255, 255, 255, 0.14);
+#dock::before {
+  content: '';
+  width: var(--tab-height);
+}
+
+#layers {
+  display: flex;
+  gap: 6px;
+}
+
+.layer-tab,
+#theme {
+  border: 1px solid var(--line);
   border-radius: 999px;
-  background: rgba(0, 0, 0, 0.45);
+  background: var(--surface);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--tab-ink);
   font: inherit;
-  font-size: var(--caption);
   font-weight: 300;
   letter-spacing: 0.03em;
   padding: 4px 12px;
@@ -312,14 +390,30 @@ body.controls-open #info {
   transition: color 0.2s, border-color 0.2s, background 0.2s;
 }
 
-.layer-tab:hover {
-  color: rgba(255, 255, 255, 0.85);
+.layer-tab:hover,
+#theme:hover {
+  color: var(--tab-ink-hover);
 }
 
 .layer-tab.active {
-  color: #fff;
-  border-color: rgba(255, 255, 255, 0.5);
-  background: rgba(255, 255, 255, 0.12);
+  color: var(--ink-strong);
+  border-color: var(--line-strong);
+  background: var(--surface-active);
+}
+
+/* A round button the height of the tabs beside it. */
+#theme {
+  width: var(--tab-height);
+  height: var(--tab-height);
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#theme svg {
+  width: 1.1em;
+  height: 1.1em;
 }
 
 .layer-tab.loading {
@@ -363,11 +457,11 @@ body.controls-open #info {
   max-height: calc(100dvh - var(--edge-top) - var(--edge-bottom) - 12px);
   overflow-y: auto;
   overscroll-behavior: contain;
-  background: rgba(0, 0, 0, 0.55);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--surface-panel);
+  border: 1px solid var(--line);
   border-radius: 8px;
   padding: 10px 12px;
-  color: #d8d8d8;
+  color: var(--panel-ink);
   font-size: var(--panel-text);
   font-weight: 300;
   backdrop-filter: blur(6px);
@@ -388,15 +482,15 @@ body.controls-open #info {
   font-size: 1.05em;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: #fff;
+  color: var(--ink-strong);
   margin-bottom: 8px;
 }
 
 .controls-toggle,
 .controls-reset {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--surface-button);
   border: none;
-  color: #ddd;
+  color: var(--panel-ink);
   border-radius: 4px;
   cursor: pointer;
   font: inherit;
@@ -427,12 +521,12 @@ body.controls-open #info {
 
 .controls-value {
   font-variant-numeric: tabular-nums;
-  color: #9ad;
+  color: var(--accent);
 }
 
 .controls-row input[type='range'] {
   width: 100%;
-  accent-color: #9ad;
+  accent-color: var(--accent);
   cursor: pointer;
   /* Comfortable touch target without making the panel taller */
   height: 20px;
@@ -448,7 +542,7 @@ body.controls-open #info {
   margin-top: 10px;
   font-size: 0.85em;
   line-height: 1.5;
-  color: #888;
+  color: var(--ink-dim);
 }
 
 #loading {
@@ -457,7 +551,7 @@ body.controls-open #info {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #666;
+  color: var(--ink-dim);
   font-size: var(--caption);
   font-weight: 300;
   letter-spacing: 0.08em;
@@ -528,13 +622,13 @@ body.ready #loading {
 #caption a {
   color: inherit;
   text-decoration: none;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.22);
+  border-bottom: 1px solid var(--line-soft);
   transition: color 0.2s, border-color 0.2s;
 }
 
 #caption a:hover {
   color: var(--ink);
-  border-bottom-color: rgba(255, 255, 255, 0.55);
+  border-bottom-color: var(--line-strong);
 }
 
 /* A phone has no room across the top - the summary and the readout already fill
@@ -554,9 +648,13 @@ body.ready #loading {
   }
 }
 
-/* Recording (?capture): the stop/start prompt is an affordance for a viewer
-   with a pointer, and has no business in a video file. */
-body.capturing #hint {
+/* Recording (?capture): the stop/start prompt and the theme toggle are
+   affordances for a viewer with a pointer, and have no business in a video
+   file. The toggle's balancing blank goes with it, or the tabs would sit off
+   centre. */
+body.capturing #hint,
+body.capturing #theme,
+body.capturing #dock::before {
   display: none;
 }
 

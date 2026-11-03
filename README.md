@@ -83,6 +83,7 @@ dragging:
 | **l** | faceted lighting on/off |
 | **b** | bloom on/off |
 | **1**–**4** | pick a layer directly (or use the tabs under the globe) |
+| **t** | dark / light theme (or the button beside the tabs) |
 | **h** | show the parameter panel |
 
 Touch has no hover, so it gets the conventional mapping: **drag** to orbit,
@@ -90,6 +91,14 @@ Touch has no hover, so it gets the conventional mapping: **drag** to orbit,
 on both axes, so the surface under your finger travels the other way —
 horizontally that is also the sense the pointer has always had on a mouse; the
 two used to disagree.
+
+The piece was made for black, and that is the default — but it opens light if
+the OS prefers it, and `t` or the sun/moon button switches, a choice that is
+remembered. The ramp is the same on both: colour is data here, and a theme is
+not allowed to touch it. The one thing that changes beyond the palette of the
+chrome is the bloom, which on a light page *tints* the background toward the
+limb's colour rather than adding light to it — on off-white, added light just
+clips to white and the halo would vanish.
 
 `h` opens an authoring panel for displacement, texture limit, base radius,
 growth, lighting, rim light and falloff, bloom, the colour ramp, tilt range,
@@ -238,6 +247,7 @@ URL parameters:
 | `?cycle=<n>` | walk the layers *n* full passes, then settle back on CO₂ |
 | `?cycle` | walk them endlessly, for a display left up |
 | `?dwell=<s>` | seconds each layer holds, default 1 |
+| `?theme=light` | open on the light background (`dark` likewise); not remembered |
 | `?synthetic` | use the built-in generated dataset instead of the real record |
 
 So `?cycle=1` shows each of the four once and stops on CO₂; `?cycle=3&dwell=2`
@@ -278,6 +288,7 @@ node tools/record.mjs                    # all four layers, whole record each
 node tools/record.mjs --layers co2 --fps 60
 node tools/record.mjs --smoke 4          # four frames per layer, to check
 node tools/record.mjs --safe none        # HUD out to the frame edges
+node tools/record.mjs --theme light      # on the light background
 ```
 
 By default it lays the HUD out for **Instagram's safe area**, which two separate

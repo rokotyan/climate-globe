@@ -11,9 +11,18 @@ import {Controls} from './controls';
 import {Labels} from './labels';
 import {Bloom} from './post';
 import {bindInput} from './input';
+import {ThemeSwitch, initialTheme} from './theme';
 
 async function main(): Promise<void> {
   const canvas = document.getElementById('canvas') as HTMLCanvasElement;
+  const params = new URLSearchParams(window.location.search);
+
+  // First, before the data arrives: the loading screen should already be the
+  // colour the page is going to be, not flash black on its way to light.
+  const theme = new ThemeSwitch(
+    document.getElementById('theme') as HTMLButtonElement,
+    initialTheme(params)
+  );
 
   const dataset = await loadDatasetWithFallback();
 
@@ -25,11 +34,20 @@ async function main(): Promise<void> {
 
   const camera = new Camera();
   const playback = new Playback(dataset);
-  const params = new URLSearchParams(window.location.search);
   const startParam = params.get('start');
   if (startParam !== null) playback.seek(Number(startParam));
   const globe = new CO2Globe(device, dataset);
   const bloom = new Bloom(device);
+  // The canvas clears to the page colour - the HUD gets it from CSS directly -
+  // and on a light page the rim and the halo turn over, since added light has
+  // nowhere to go against off-white. See co2.fs.glsl and composite.fs.glsl.
+  const applyTheme = () => {
+    const light = theme.theme === 'light';
+    bloom.setBackground(theme.background, light);
+    globe.rimDarkens = light;
+  };
+  applyTheme();
+  theme.onChange = applyTheme;
   const hud = new Hud(dataset);
   const labels = new Labels(document.getElementById('cities')!, dataset);
   const controls = new Controls(globe, playback, hud, dataset, camera, bloom);
@@ -145,7 +163,7 @@ async function main(): Promise<void> {
     };
   }
 
-  bindInput({canvas, camera, playback, globe, controls, layerSwitch, bloom});
+  bindInput({canvas, camera, playback, globe, controls, layerSwitch, bloom, theme});
 
   let lastTime: number | null = null;
 

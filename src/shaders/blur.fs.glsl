@@ -15,12 +15,14 @@ out vec4 fragColor;
 const float OFFSETS[3] = float[3](0.0, 1.3846153846, 3.2307692308);
 const float WEIGHTS[3] = float[3](0.2270270270, 0.3162162162, 0.0702702703);
 
+/* All four channels: alpha carries the bloom mask alongside the colour, and
+   the composite wants it blurred the same amount. */
 void main() {
-  vec3 sum = texture(uSource, vUv).rgb * WEIGHTS[0];
+  vec4 sum = texture(uSource, vUv) * WEIGHTS[0];
   for (int i = 1; i < 3; i++) {
     vec2 delta = uStep * OFFSETS[i];
-    sum += texture(uSource, vUv + delta).rgb * WEIGHTS[i];
-    sum += texture(uSource, vUv - delta).rgb * WEIGHTS[i];
+    sum += texture(uSource, vUv + delta) * WEIGHTS[i];
+    sum += texture(uSource, vUv - delta) * WEIGHTS[i];
   }
-  fragColor = vec4(sum, 1.0);
+  fragColor = sum;
 }
