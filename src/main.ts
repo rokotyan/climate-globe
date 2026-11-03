@@ -39,13 +39,9 @@ async function main(): Promise<void> {
   const globe = new CO2Globe(device, dataset);
   const bloom = new Bloom(device);
   // The canvas clears to the page colour - the HUD gets it from CSS directly -
-  // and on a light page the rim and the halo turn over, since added light has
-  // nowhere to go against off-white. See co2.fs.glsl and composite.fs.glsl.
-  const applyTheme = () => {
-    const light = theme.theme === 'light';
-    bloom.setBackground(theme.background, light);
-    globe.rimDarkens = light;
-  };
+  // and on a light page the halo blends as a tint, since added light has
+  // nowhere to go against off-white. See composite.fs.glsl.
+  const applyTheme = () => bloom.setBackground(theme.background, theme.theme === 'light');
   applyTheme();
   theme.onChange = applyTheme;
   const hud = new Hud(dataset);

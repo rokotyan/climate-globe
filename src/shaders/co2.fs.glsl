@@ -18,13 +18,6 @@ uniform float uRimPower;
  * to be suppressed when there is no offscreen pass to consume it.
  */
 uniform float uAlphaMask;
-/**
- * 1 on a light background. Added light has nowhere to go against an off-white
- * page - a brightened limb melts into it - so the rim darkens the limb there
- * instead, which is the same hint of atmosphere the other way up and the only
- * thing that keeps the globe's edge legible in the yellow years.
- */
-uniform float uRimDarkens;
 
 out vec4 fragColor;
 
@@ -62,7 +55,5 @@ void main() {
      The offscreen target clears to alpha 0 (see Bloom.beginScenePass), so the
      background - whatever colour the theme gives it - contributes nothing when
      the bright pass multiplies the two. */
-  vec3 lit = surface + rimTint * fresnel * uRimStrength;
-  vec3 shaded = surface * (1.0 - fresnel * uRimStrength);
-  fragColor = vec4(mix(lit, shaded, uRimDarkens), mix(1.0, fresnel, uAlphaMask));
+  fragColor = vec4(surface + rimTint * fresnel * uRimStrength, mix(1.0, fresnel, uAlphaMask));
 }

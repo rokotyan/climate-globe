@@ -98,7 +98,9 @@ remembered. The ramp is the same on both: colour is data here, and a theme is
 not allowed to touch it. The one thing that changes beyond the palette of the
 chrome is the bloom, which on a light page *tints* the background toward the
 limb's colour rather than adding light to it — on off-white, added light just
-clips to white and the halo would vanish.
+clips to white and the halo would vanish. The rim light itself is left alone:
+a darkened limb was tried and gave the globe a shaded, rendered edge the piece
+otherwise avoids.
 
 `h` opens an authoring panel for displacement, texture limit, base radius,
 growth, lighting, rim light and falloff, bloom, the colour ramp, tilt range,
