@@ -76,8 +76,6 @@ export class CO2Globe {
    * top, and the effect is wanted as a hint of atmosphere, not a ring.
    */
   rimPower = 6.9;
-  /** True on a light background: the rim darkens the limb instead of lighting it. */
-  rimDarkens = false;
 
   constructor(private device: Device, private dataset: Dataset) {
     const means = dataset.months.map((m) => m.mean);
@@ -120,7 +118,6 @@ export class CO2Globe {
       uEye: new Float32Array(3),
       uRimStrength: this.rimStrength,
       uRimPower: this.rimPower,
-      uRimDarkens: 0,
       uAlphaMask: 0
     };
 
@@ -240,7 +237,6 @@ export class CO2Globe {
     (u.uEye as Float32Array).set(eye);
     u.uRimStrength = this.rimStrength;
     u.uRimPower = this.rimPower;
-    u.uRimDarkens = this.rimDarkens ? 1 : 0;
     u.uAlphaMask = writeBloomMask ? 1 : 0;
 
     this.model.draw(renderPass);
