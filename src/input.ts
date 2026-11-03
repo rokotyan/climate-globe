@@ -4,6 +4,7 @@ import type {CO2Globe} from './co2-globe';
 import type {Controls} from './controls';
 import type {LayerSwitch} from './layer-switch';
 import type {Bloom} from './post';
+import type {ThemeSwitch} from './theme';
 
 /**
  * Pointer, touch and keyboard bindings.
@@ -22,6 +23,7 @@ interface Targets {
   controls: Controls;
   layerSwitch: LayerSwitch;
   bloom: Bloom;
+  theme: ThemeSwitch;
 }
 
 const TAP_SLOP_PX = 12;
@@ -30,9 +32,11 @@ const TAP_MS = 400;
 const DRAG_ANGLE = 0.006;
 const DRAG_TILT = 0.005;
 
-export function bindInput({canvas, camera, playback, globe, controls, layerSwitch, bloom}: Targets): void {
+export function bindInput({
+  canvas, camera, playback, globe, controls, layerSwitch, bloom, theme
+}: Targets): void {
   const overUi = (e: Event) =>
-    (e.target as HTMLElement | null)?.closest('#controls, #layers, #caption, .info-spark') !== null;
+    (e.target as HTMLElement | null)?.closest('#controls, #dock, #caption, .info-spark') !== null;
 
   // --- Mouse: passive, no drag (the original's feel) ---
   let lastMouseX: number | null = null;
@@ -144,6 +148,9 @@ export function bindInput({canvas, camera, playback, globe, controls, layerSwitc
         break;
       case 'h':
         controls.toggleVisible();
+        break;
+      case 't':
+        theme.toggle();
         break;
       case 'ArrowRight':
         layerSwitch.step(1);

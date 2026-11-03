@@ -38,6 +38,19 @@ export class Bloom {
    * two are adjustable independently while staying the same light.
    */
   intensity = 0.05;
+  /**
+   * What the canvas clears to, 0..1 rgb - the theme's page background, so the
+   * globe hangs in the same colour the HUD around it is drawn on. Set through
+   * setBackground, which also decides how the halo is blended.
+   */
+  private background: [number, number, number] = [0, 0, 0];
+  /**
+   * 0 adds the halo as light, 1 tints the background toward it instead. On
+   * black the two are the same thing; on an off-white, added light just clips
+   * to white and the halo vanishes, whereas a tint reads as the colour of the
+   * limb bleeding into the page - the same effect, the other way up.
+   */
+  private tint = 0;
 
   private device: Device;
   private format: 'rgba16float' | 'rgba8unorm';
@@ -89,7 +102,7 @@ export class Bloom {
 
     this.brightUniforms = {};
     this.blurUniforms = {uStep: new Float32Array(2)};
-    this.compositeUniforms = {uIntensity: this.intensity};
+    this.compositeUniforms = {uIntensity: this.intensity, uTint: this.tint};
 
     this.brightModel = new Model(device, {
       ...common, id: 'bloom-bright', fs: brightFs, uniforms: this.brightUniforms
@@ -102,18 +115,32 @@ export class Bloom {
     });
   }
 
+  /** The page background as the theme gives it, and whether it counts as light. */
+  setBackground(rgb: [number, number, number], light: boolean): void {
+    this.background = rgb;
+    this.tint = light ? 1 : 0;
+  }
+
   /**
    * Where the globe should draw this frame: the offscreen target when bloom is
    * on, the canvas when it is off. Caller ends the pass, then calls composite().
    */
   beginScenePass(width: number, height: number): RenderPass {
-    const opts = {clearColor: [0, 0, 0, 1] as [number, number, number, number], clearDepth: 1};
+    const [r, g, b] = this.background;
     if (!this.enabled) {
       this.release();
-      return this.device.beginRenderPass(opts);
+      return this.device.beginRenderPass({clearColor: [r, g, b, 1], clearDepth: 1});
     }
     this.ensureTargets(width, height);
-    return this.device.beginRenderPass({...opts, framebuffer: this.scene!});
+    // Alpha is the bloom mask in this target, and the background must not be
+    // in it: cleared to 1 it would glow wholesale the moment it was anything
+    // but black. The composite writes its own alpha, so nothing downstream
+    // sees the 0.
+    return this.device.beginRenderPass({
+      framebuffer: this.scene!,
+      clearColor: [r, g, b, 0],
+      clearDepth: 1
+    });
   }
 
   /** Bright pass, two blur octaves, then add back over the canvas. */
@@ -146,13 +173,16 @@ export class Bloom {
     // Whichever buffer the last pass wrote is `source` after the final swap.
     this.compositeModel.setBindings({uScene: sceneColor, uBloom: source.colorAttachments[0]});
     this.compositeUniforms.uIntensity = this.intensity;
-    const pass = this.device.beginRenderPass({clearColor: [0, 0, 0, 1], clearDepth: 1});
+    this.compositeUniforms.uTint = this.tint;
+    const [r, g, b] = this.background;
+    const pass = this.device.beginRenderPass({clearColor: [r, g, b, 1], clearDepth: 1});
     this.compositeModel.draw(pass);
     pass.end();
   }
 
   private drawInto(target: Framebuffer, model: Model): void {
-    const pass = this.device.beginRenderPass({framebuffer: target, clearColor: [0, 0, 0, 1]});
+    // The quad covers the target, so the clear is only ever a formality.
+    const pass = this.device.beginRenderPass({framebuffer: target, clearColor: [0, 0, 0, 0]});
     model.draw(pass);
     pass.end();
   }

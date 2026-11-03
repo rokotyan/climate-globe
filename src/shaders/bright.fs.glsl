@@ -18,8 +18,10 @@ out vec4 fragColor;
    and washed the globe to salmon. A mask sidesteps the question entirely.
 
    Multiplying rgb by the mask keeps the halo the colour of the limb it came
-   from, so it stays tinted by the data underneath. */
+   from, so it stays tinted by the data underneath. The mask itself rides along
+   in alpha, blurred with the colour, because the composite needs it on a light
+   background - see composite.fs.glsl. */
 void main() {
   vec4 scene = texture(uScene, vUv);
-  fragColor = vec4(scene.rgb * scene.a, 1.0);
+  fragColor = vec4(scene.rgb * scene.a, scene.a);
 }
